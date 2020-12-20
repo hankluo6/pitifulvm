@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -28,6 +30,7 @@ typedef struct {
     stack_entry_t *store;
 } stack_frame_t;
 
+typedef stack_entry_t local_variable_t;
 
 
 void init_stack(stack_frame_t *stack, size_t entry_size);

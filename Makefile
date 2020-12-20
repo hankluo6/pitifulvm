@@ -8,9 +8,9 @@ include mk/jdk.mk
 
 # Build PitifulVM
 all: $(BIN)
-$(BIN): $(BIN).c
+$(BIN): $(BIN).c 
 	$(VECHO) "  CC+LD\t\t$@\n"
-	$(Q)$(CC) $(CFLAGS) -o $@ $<
+	$(Q)$(CC) $(CFLAGS) -o $@ $< stack.c java_file.c
 
 TESTS = \
 	Factorial \
