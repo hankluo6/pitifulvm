@@ -4,7 +4,7 @@ void init_object_heap()
 {
     /* max contain 100 object */
     object_heap.objects = malloc(sizeof(object_t*) * 100);
-    object_heap.object_length = 0;
+    object_heap.length = 0;
 }
 
 object_t* create_object(class_file_t *clazz)
@@ -13,7 +13,7 @@ object_t* create_object(class_file_t *clazz)
     object_t *new_obj = malloc(sizeof(object_t));
     new_obj->ptr = malloc(size);
     new_obj->type = clazz;
-    object_heap.objects[object_heap.object_length++] = new_obj;
+    object_heap.objects[object_heap.length++] = new_obj;
 
     return new_obj;
 }
@@ -66,7 +66,7 @@ variable_t *find_field_addr(object_t *obj, char *name)
 
 void free_object_heap()
 {
-    for (int i = 0; i < object_heap.object_length; ++i) {
+    for (int i = 0; i < object_heap.length; ++i) {
         free(object_heap.objects[i]->ptr);
         free(object_heap.objects[i]);
     }
