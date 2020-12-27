@@ -20,7 +20,7 @@ object_t* create_object(class_file_t *clazz)
 
 size_t get_field_size(class_file_t *clazz)
 {
-    size_t size;
+    size_t size = 0;
     field_t *field = clazz->fields;
     for (u2 i = 0; i < clazz->fields_count; i++, field++) {
         if (strcmp(field->descriptor, "B") == 0) {
