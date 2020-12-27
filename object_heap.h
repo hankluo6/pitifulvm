@@ -18,7 +18,7 @@ typedef struct
 
 
 typedef struct {
-    u2 object_length;
+    u2 length;
     object_t** objects;
 } object_heap_t;
 
