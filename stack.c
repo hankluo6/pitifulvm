@@ -1,18 +1,20 @@
 #include "stack.h"
+#include <stdio.h>
 
 void init_stack(stack_frame_t *stack, size_t entry_size)
 {
     memset(stack, 0, sizeof(stack_frame_t));
     stack->max_size = entry_size;
-    stack->store = (stack_entry_t *)malloc(sizeof(stack_entry_t) * entry_size);
-    for (size_t i = 0; i < entry_size ; i++)
+    stack->store = malloc(sizeof(stack_entry_t) * (entry_size));
+    for (size_t i = 0; i < entry_size; i++)
         memset(&stack->store[i], 0, sizeof(stack_entry_t));
     stack->size = 0;
 }
 
+
 void push_byte(stack_frame_t *stack, int8_t value)
 {
-    unsigned char *tmp = stack->store[stack->size].entry;
+    unsigned char *tmp = stack->store[stack->size].entry.val;
     memcpy(tmp, &value, sizeof(int8_t));
     stack->store[stack->size].type = STACK_ENTRY_BYTE;
     stack->size++;
@@ -20,7 +22,7 @@ void push_byte(stack_frame_t *stack, int8_t value)
 
 void push_short(stack_frame_t *stack, int16_t value)
 {
-    unsigned char *tmp = stack->store[stack->size].entry;
+    unsigned char *tmp = stack->store[stack->size].entry.val;
     memcpy(tmp, &value, sizeof(int16_t));
     stack->store[stack->size].type = STACK_ENTRY_SHORT;
     stack->size++;
@@ -28,9 +30,16 @@ void push_short(stack_frame_t *stack, int16_t value)
 
 void push_int(stack_frame_t *stack, int32_t value)
 {
-    unsigned char *tmp = stack->store[stack->size].entry;
+    unsigned char *tmp = stack->store[stack->size].entry.val;
     memcpy(tmp, &value, sizeof(int32_t));
     stack->store[stack->size].type = STACK_ENTRY_INT;
+    stack->size++;
+}
+
+void push_ref(stack_frame_t *stack, void *addr)
+{
+    stack->store[stack->size].entry.ptr = addr;
+    stack->store[stack->size].type = STACK_ENTRY_REF;
     stack->size++;
 }
 
@@ -65,9 +74,14 @@ int32_t stack_to_int(unsigned char *entry, size_t size)
 int32_t pop_int(stack_frame_t *stack)
 {
     size_t size = get_type_size(stack->store[stack->size - 1].type);
-    int32_t value = stack_to_int(stack->store[stack->size - 1].entry, size);
+    int32_t value = stack_to_int(stack->store[stack->size - 1].entry.val, size);
     stack->size--;
     return value;
+}
+
+void *pop_ref(stack_frame_t *stack)
+{
+    return stack->store[--stack->size].entry.ptr;
 }
 
 void pop_to_local(stack_frame_t *stack, local_variable_t *locals)

@@ -2,15 +2,21 @@ CC ?= gcc
 CFLAGS = -std=c99 -Os -Wall -Wextra
 
 BIN = jvm
+OBJ = jvm.o stack.o java_file.o class_heap.o object_heap.o 
 
 include mk/common.mk
 include mk/jdk.mk
 
+
 # Build PitifulVM
 all: $(BIN)
-$(BIN): $(BIN).c 
+$(BIN): $(OBJ)
 	$(VECHO) "  CC+LD\t\t$@\n"
-	$(Q)$(CC) $(CFLAGS) -o $@ $< stack.c java_file.c
+	$(Q)$(CC) $(CFLAGS) -o $@ $^
+
+%.o: %.c
+	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
+
 
 TESTS = \
 	Factorial \
@@ -29,7 +35,9 @@ TESTS = \
 	Jumps \
 	PalindromeProduct \
 	Primes \
-	Recursion
+	Recursion \
+	Constructor \
+	NewAndInvokeVirtual
 
 check: $(addprefix tests/,$(TESTS:=-result.out))
 

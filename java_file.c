@@ -46,6 +46,27 @@ CONSTANT_NameAndType_info *get_method_name_and_type(constant_pool_t *cp, u2 idx)
     return (CONSTANT_NameAndType_info *) name_and_type_constant->info;
 }
 
+CONSTANT_FieldOrMethodRef_info *get_methodref(constant_pool_t *cp, u2 idx)
+{
+    const_pool_info *method = get_constant(cp, idx);
+    assert(method->tag == CONSTANT_MethodRef && "Expected a MethodRef");
+    return (CONSTANT_FieldOrMethodRef_info *) method->info;
+}
+
+CONSTANT_FieldOrMethodRef_info *get_fieldref(constant_pool_t *cp, u2 idx)
+{
+    const_pool_info *method = get_constant(cp, idx);
+    assert(method->tag == CONSTANT_FieldRef && "Expected a FieldRef");
+    return (CONSTANT_FieldOrMethodRef_info *) method->info;
+}
+
+CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx)
+{
+    const_pool_info *class = get_constant(cp, idx);
+    assert(class->tag == CONSTANT_Class && "Expected a Class");
+    return (CONSTANT_Class_info *) class->info;
+}
+
 /**
  * Get the number of integer parameters that a method takes.
  * Use the descriptor string of the method to determine its signature.
@@ -76,6 +97,30 @@ method_t *find_method(const char *name, const char *desc, class_file_t *clazz)
     return NULL;
 }
 
+/* remove this */
+char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info)
+{
+    CONSTANT_FieldOrMethodRef_info *field_ref =
+        get_fieldref(&clazz->constant_pool, idx);
+    const_pool_info *name_and_type =
+        get_constant(&clazz->constant_pool, field_ref->name_and_type_index);
+    assert(name_and_type->tag == CONSTANT_NameAndType && "Expected a NameAndType");
+    const_pool_info *name =
+        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->name_index);
+    assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
+    *name_info = (char *)name->info;
+    const_pool_info *descriptor =
+        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->descriptor_index);
+    assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
+    *descriptor_info = (char *)descriptor->info;
+    CONSTANT_Class_info *class_info =
+        get_class_name(&clazz->constant_pool, field_ref->class_index);
+    const_pool_info *class_name =
+        get_constant(&clazz->constant_pool, class_info->string_index);
+
+    return (char *)class_name->info;
+}
+
 /**
  * Find the method corresponding to the given constant pool index.
  *
@@ -83,7 +128,7 @@ method_t *find_method(const char *name, const char *desc, class_file_t *clazz)
  * @param clazz the parsed class file
  * @return the method if it was found, or NULL
  */
-method_t *find_method_from_index(uint16_t idx, class_file_t *clazz)
+method_t *find_method_from_index(uint16_t idx, class_file_t *clazz, class_file_t *target_clazz)
 {
     CONSTANT_NameAndType_info *name_and_type =
         get_method_name_and_type(&clazz->constant_pool, idx);
@@ -93,7 +138,41 @@ method_t *find_method_from_index(uint16_t idx, class_file_t *clazz)
     const_pool_info *descriptor =
         get_constant(&clazz->constant_pool, name_and_type->descriptor_index);
     assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    return find_method((char *) name->info, (char *) descriptor->info, clazz);
+    return find_method((char *) name->info, (char *) descriptor->info, target_clazz);
+}
+
+char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info)
+{
+    CONSTANT_FieldOrMethodRef_info *method_ref =
+        get_methodref(&clazz->constant_pool, idx);
+    const_pool_info *name_and_type =
+        get_constant(&clazz->constant_pool, method_ref->name_and_type_index);
+    assert(name_and_type->tag == CONSTANT_NameAndType && "Expected a NameAndType");
+    const_pool_info *name =
+        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->name_index);
+    assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
+    *name_info = (char *)name->info;
+    const_pool_info *descriptor =
+        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->descriptor_index);
+    assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
+    *descriptor_info = (char *)descriptor->info;
+    CONSTANT_Class_info *class_info =
+        get_class_name(&clazz->constant_pool, method_ref->class_index);
+    const_pool_info *class_name =
+        get_constant(&clazz->constant_pool, class_info->string_index);
+
+    return (char *)class_name->info;
+}
+
+
+char *find_class_name_from_index(uint16_t idx, class_file_t *clazz)
+{
+    CONSTANT_Class_info *class =
+        get_class_name(&clazz->constant_pool, idx);
+
+    const_pool_info *name = get_constant(&clazz->constant_pool, class->string_index);
+    assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
+    return (char *) name->info;
 }
 
 class_header_t get_class_header(FILE *class_file)
@@ -183,9 +262,22 @@ class_info_t get_class_info(FILE *class_file)
     };
     u2 interfaces_count = read_u2(class_file);
     assert(!interfaces_count && "This VM does not support interfaces.");
-    u2 fields_count = read_u2(class_file);
-    assert(!fields_count && "This VM does not support fields.");
     return info;
+}
+
+void read_field_attributes(FILE *class_file,
+                            field_info *info,
+                            constant_pool_t *cp)
+{
+    for (u2 i = 0; i < info->attributes_count; i++) {
+        attribute_info ainfo = {
+            .attribute_name_index = read_u2(class_file),
+            .attribute_length = read_u4(class_file),
+        };
+        long attribute_end = ftell(class_file) + ainfo.attribute_length;
+        /* Skip all the attribute */
+        fseek(class_file, attribute_end, SEEK_SET);
+    }
 }
 
 void read_method_attributes(FILE *class_file,
@@ -225,6 +317,37 @@ void read_method_attributes(FILE *class_file,
 
 #define IS_STATIC 0x0008
 
+field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz)
+{
+    u2 fields_count = read_u2(class_file);
+    clazz->fields_count = fields_count;
+    field_t *fields = malloc(sizeof(*fields) * (fields_count + 1));
+    assert(fields && "Failed to allocate methods");
+
+    field_t *field = fields;
+    for (u2 i = 0; i < fields_count; i++, field++) {
+        field_info info = {
+            .access_flags = read_u2(class_file),
+            .name_index = read_u2(class_file),
+            .descriptor_index = read_u2(class_file),
+            .attributes_count = read_u2(class_file),
+        };
+
+        const_pool_info *name = get_constant(cp, info.name_index);
+        assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
+        field->name = (char *) name->info;
+        const_pool_info *descriptor = get_constant(cp, info.descriptor_index);
+        assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
+        field->descriptor = (char *) descriptor->info;
+
+        read_field_attributes(class_file, &info, cp);
+    }
+
+    /* Mark end of array with NULL name */
+    field->name = NULL;
+    return fields;
+}
+
 method_t *get_methods(FILE *class_file, constant_pool_t *cp)
 {
     u2 method_count = read_u2(class_file);
@@ -250,9 +373,9 @@ method_t *get_methods(FILE *class_file, constant_pool_t *cp)
         /* FIXME: this VM can only execute static methods, while every class
          * has a constructor method <init>
          */
-        if (strcmp(method->name, "<init>"))
+        /* if (strcmp(method->name, "<init>"))
             assert((info.access_flags & IS_STATIC) &&
-                   "Only static methods are supported by this VM.");
+                   "Only static methods are supported by this VM."); */
 
         read_method_attributes(class_file, &info, &method->code, cp);
     }
@@ -280,6 +403,9 @@ class_file_t get_class(FILE *class_file)
     /* Read information about the class that was compiled. */
     get_class_info(class_file);
 
+    /* Read the list of fields */
+    clazz.fields = get_fields(class_file, &clazz.constant_pool, &clazz);
+
     /* Read the list of static methods */
     clazz.methods = get_methods(class_file, &clazz.constant_pool);
     return clazz;
@@ -299,5 +425,7 @@ void free_class(class_file_t *clazz)
 
     for (method_t *method = clazz->methods; method->name; method++)
         free(method->code.code);
+
     free(clazz->methods);
+    free(clazz->fields);
 }
