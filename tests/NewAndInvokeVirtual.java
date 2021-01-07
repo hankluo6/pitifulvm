@@ -1,6 +1,6 @@
-class A {
+class New_A {
     int x;
-    A(int val, int val2, int val3) 
+    New_A(int val, int val2, int val3) 
     {
         x = val + val2 * val3;
     }
@@ -10,9 +10,9 @@ class A {
     }
 }
 
-class B {
+class New_B{
     int x;
-    B(int val) 
+    New_B(int val) 
     {
         x = val;
     }
@@ -29,8 +29,8 @@ class NewAndInvokeVirtual {
     }
     public static void main(String args[]) {
         NewAndInvokeVirtual x = new NewAndInvokeVirtual();
-        A obj1 = new A(5555, 88, 12);
-        B obj2 = new B(3);
+        New_A obj1 = new New_A(5555, 88, 12);
+        New_B obj2 = new New_B(3);
         x.a = 3;
         x.b = 4;
         x.c = 5;

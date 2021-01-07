@@ -2,13 +2,7 @@
 
 #include "java_file.h"
 
-typedef union
-{
-    u1 char_value;
-    u2 short_value;
-    u4 int_value;
-    void *ptr_value;
-} variable_t;
+
 
 typedef struct
 {

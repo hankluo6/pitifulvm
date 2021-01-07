@@ -1,15 +1,12 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
-typedef uint8_t u1;
-typedef uint16_t u2;
-typedef uint32_t u4;
+#include "type.h"
 
 typedef struct {
     u4 magic;
@@ -56,6 +53,7 @@ typedef struct
     char *class_name;
     char *name;
     char *descriptor;
+    variable_t *value;
 } field_t;
 
 typedef enum {
@@ -173,6 +171,7 @@ typedef enum {
     i_ireturn = 0xac,
     i_return = 0xb1,
     i_getstatic = 0xb2,
+    i_putstatic = 0xb3,
     i_getfield = 0xb4,
     i_putfield = 0xb5,
     i_invokevirtual = 0xb6,
@@ -190,6 +189,7 @@ CONSTANT_NameAndType_info *get_method_name_and_type(constant_pool_t *cp, u2 idx)
 CONSTANT_FieldOrMethodRef_info *get_methodref(constant_pool_t *cp, u2 idx);
 CONSTANT_FieldOrMethodRef_info *get_fieldref(constant_pool_t *cp, u2 idx);
 uint16_t get_number_of_parameters(method_t *method);
+field_t *find_field(const char *name, const char *desc, class_file_t *clazz);
 method_t *find_method(const char *name, const char *desc, class_file_t *clazz);
 method_t *find_method_from_index(uint16_t idx, class_file_t *clazz, class_file_t *target_clazz);
 char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);

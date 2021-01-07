@@ -7,7 +7,6 @@ void init_class_heap()
     class_heap.length = 0;
 }
 
-//bug>
 /* the name parameter should contain ".class" suffix and be cut in this function */
 void add_class(class_file_t *clazz, char *path, char *name)
 {
@@ -41,7 +40,10 @@ void free_class_heap()
             free(constant->info);
         }
         free(class_heap.class_info[i]->clazz->constant_pool.constant_pool);
-        
+
+        field_t *field = class_heap.class_info[i]->clazz->fields;
+        for (u2 j = 0; j < class_heap.class_info[i]->clazz->fields_count; j++, field++)
+            free(field->value);
         free(class_heap.class_info[i]->clazz->fields);
 
         for (method_t *method = class_heap.class_info[i]->clazz->methods; method->name; method++)
