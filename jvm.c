@@ -746,7 +746,57 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 push_int(op_stack, *exec_res);
             }
             free(exec_res);
+            
+            /* remove local variable */
+            /* FIXME: object heap must be clear too */
+            for (int i = 1; i < method->code.max_locals; ++i) {
+                if (own_locals[i].type == STACK_ENTRY_REF) {
+                    free(own_locals[i].entry.ptr);
+                }
+            }
+            
             pc += 3;
+        } break;
+
+        case i_iaload: {
+            int idx = pop_int(op_stack);
+            int *arr = pop_ref(op_stack);
+
+            push_int(op_stack, arr[idx]);
+            pc += 1;
+        } break;
+
+        case i_iastore: {
+            int value = pop_int(op_stack);
+            int idx = pop_int(op_stack);
+            int *arr = pop_ref(op_stack);
+
+            arr[idx] = value;
+            pc += 1;
+        } break;
+
+        case i_newarray: {
+            uint8_t index = code_buf[pc + 1];
+
+            int count = pop_int(op_stack);
+            int *arr;
+            switch (index)
+            {
+            case T_INT: {
+                arr = malloc(count * sizeof(int));
+            } break;
+            case T_BOOLEN:
+            case T_CHAR:
+            case T_FLOAT:
+            case T_DOUBLE:
+            case T_BYTE:
+            case T_SHORT:
+            case T_LONG:
+                assert(0 && "only support int array");
+                break;
+            }
+            push_ref(op_stack, arr);
+            pc += 2;
         } break;
 
         }
