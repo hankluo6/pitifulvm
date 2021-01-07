@@ -36,7 +36,8 @@ TESTS = \
 	Recursion \
 	Constructor \
 	InvokeVirtual \
-	Static
+	Static \
+	Array
 
 check: $(addprefix tests/,$(TESTS:=-result.out))
 

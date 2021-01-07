@@ -134,6 +134,7 @@ typedef enum {
     i_aload_1 = 0x2b,
     i_aload_2 = 0x2c,
     i_aload_3 = 0x2d,
+    i_iaload = 0x2e,
     i_istore = 0x36,
     i_astore = 0x3a,
     i_istore_0 = 0x3b,
@@ -144,6 +145,7 @@ typedef enum {
     i_astore_1 = 0x4c,
     i_astore_2 = 0x4d,
     i_astore_3 = 0x4e,
+    i_iastore = 0x4f,
     i_dup = 0x59,
     i_iadd = 0x60,
     i_isub = 0x64,
@@ -174,7 +176,8 @@ typedef enum {
     i_invokevirtual = 0xb6,
     i_invokespecial = 0xb7,
     i_invokestatic = 0xb8,
-    i_new = 0xbb
+    i_new = 0xbb,
+    i_newarray = 0xbc
 } jvm_opcode_t;
 
 u1 read_u1(FILE *class_file);

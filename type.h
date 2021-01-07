@@ -12,3 +12,15 @@ typedef union
     u4 int_value;
     void *ptr_value;
 } variable_t;
+
+typedef enum
+{
+    T_BOOLEN = 4,
+    T_CHAR = 5,
+    T_FLOAT = 6,
+    T_DOUBLE = 7,
+    T_BYTE = 8,
+    T_SHORT = 9, 
+    T_INT = 10,
+    T_LONG = 11
+} array_type_t;
