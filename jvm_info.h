@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -53,6 +52,7 @@ typedef struct
     char *class_name;
     char *name;
     char *descriptor;
+    variable_t *value;
 } field_t;
 
 typedef enum {
@@ -168,6 +168,7 @@ typedef enum {
     i_ireturn = 0xac,
     i_return = 0xb1,
     i_getstatic = 0xb2,
+    i_putstatic = 0xb3,
     i_getfield = 0xb4,
     i_putfield = 0xb5,
     i_invokevirtual = 0xb6,
@@ -185,6 +186,7 @@ CONSTANT_FieldOrMethodRef_info *get_methodref(constant_pool_t *cp, u2 idx);
 CONSTANT_FieldOrMethodRef_info *get_fieldref(constant_pool_t *cp, u2 idx);
 CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx);
 uint16_t get_number_of_parameters(method_t *method);
+field_t *find_field(const char *name, const char *desc, class_file_t *clazz);
 method_t *find_method(const char *name, const char *desc, class_file_t *clazz);
 class_header_t get_class_header(FILE *class_file);
 class_info_t get_class_info(FILE *class_file);

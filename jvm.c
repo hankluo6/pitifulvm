@@ -431,7 +431,78 @@ int32_t *execute(method_t *method,
 
         /* Get static field from class */
         case i_getstatic: {
-            /* FIXME: unimplemented */
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+            
+            char *field_name, *field_descriptor, *class_name;
+            class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
+
+            if (strcmp(class_name, "java/lang/System") == 0) {
+                pc += 3;
+                break;
+            }
+
+            assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
+
+            class_file_t *new_clazz = find_class_from_heap(class_name);
+
+            /* if not found, add specify class path. this can be remove by record path infomation in class heap */
+            if (!new_clazz) {
+                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                new_clazz = find_class_from_heap(tmp);
+
+                free(tmp);
+            }
+
+
+            field_t *field = find_field(field_name, field_descriptor, new_clazz);
+            
+            push_int(op_stack, field->value->int_value);
+            pc += 3;
+
+        } break;
+
+        /* Put static field to class */
+        case i_putstatic: {
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+
+            /* TODO: support other type (e.g reference) */
+            int32_t value = pop_int(op_stack);
+            
+            char *field_name, *field_descriptor, *class_name;
+            class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
+            assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
+
+            class_file_t *target_class = find_class_from_heap(class_name);
+
+            if (target_class == NULL) {
+                if (strcmp(class_name, "java/lang/System") == 0) {
+                    pc += 3;
+                    break;
+                }
+                char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                /* attempt to read given class file */
+                FILE *class_file = fopen(strcat(tmp, ".class"), "r");
+                assert(class_file && "Failed to open file");
+
+                /* parse the class file */
+                target_class = malloc(sizeof(class_file_t));
+                *target_class = get_class(class_file);
+                
+                int error = fclose(class_file);
+                assert(!error && "Failed to close file");
+                add_class(target_class, NULL, tmp);
+                free(tmp);
+            }
+
+            field_t *field = find_field(field_name, field_descriptor, target_class);
+            
+            field->value->int_value = value;
             pc += 3;
         } break;
 

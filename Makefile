@@ -35,7 +35,8 @@ TESTS = \
 	Primes \
 	Recursion \
 	Constructor \
-	InvokeVirtual
+	InvokeVirtual \
+	Static
 
 check: $(addprefix tests/,$(TESTS:=-result.out))
 

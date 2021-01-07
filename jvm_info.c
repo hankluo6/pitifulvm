@@ -77,6 +77,16 @@ uint16_t get_number_of_parameters(method_t *method)
     return strlen(method->descriptor) - 3;
 }
 
+field_t *find_field(const char *name, const char *desc, class_file_t *clazz)
+{
+    field_t *field = clazz->fields;
+    for (u2 i = 0; i < clazz->fields_count; ++i, field++) {
+        if (!(strcmp(name, field->name) || strcmp(desc, field->descriptor)))
+            return field;
+    }
+    return NULL;
+}
+
 /**
  * Find the method with the given name and signature.
  * The descriptor is necessary because Java allows method overloading.
@@ -317,6 +327,7 @@ field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz)
         const_pool_info *descriptor = get_constant(cp, info.descriptor_index);
         assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
         field->descriptor = (char *) descriptor->info;
+        field->value = malloc(sizeof(variable_t));
 
         read_field_attributes(class_file, &info, cp);
     }
