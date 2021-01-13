@@ -42,6 +42,20 @@ typedef struct {
 } code_t;
 
 typedef struct {
+    u2 bootstrap_method_ref;
+    u2 num_bootstrap_arguments;
+    u2 *bootstrap_arguments;
+} bootstrap_methods_t;
+
+typedef struct {
+    u2 attribute_name_index;
+    u4 attribute_length;
+    u2 num_bootstrap_methods;
+    bootstrap_methods_t *bootstrap_methods;
+} bootstrapMethods_attribute_t;
+
+typedef struct {
+    char *class_name;
     char *name;
     char *descriptor;
     code_t code;
@@ -59,14 +73,32 @@ typedef enum {
     CONSTANT_Utf8 = 1,
     CONSTANT_Integer = 3,
     CONSTANT_Class = 7,
+    CONSTANT_String = 8,
     CONSTANT_FieldRef = 9,
     CONSTANT_MethodRef = 10,
-    CONSTANT_NameAndType = 12
+    CONSTANT_NameAndType = 12,
+    CONSTANT_MethodHandle = 15,
+    CONSTANT_InvokeDynamic = 18
 } const_pool_tag_t;
 
 typedef struct {
     u2 string_index;
 } CONSTANT_Class_info;
+
+typedef struct {
+    u2 string_index;
+} CONSTANT_String_info;
+
+typedef struct {
+    u2 bootstrap_method_attr_index;
+    u2 name_and_type_index;
+} CONSTANT_InvokeDynamic_info;
+
+typedef struct {
+    u1 reference_kind;
+    u2 reference_index;
+} CONSTANT_MethodHandle_info;
+
 
 typedef struct {
     u2 class_index;
@@ -94,6 +126,7 @@ typedef struct {
 
 typedef struct {
     constant_pool_t constant_pool;
+    // u2 methods_count;
     method_t *methods;
     u2 access_flags;
     u2 this_class;
@@ -103,7 +136,8 @@ typedef struct {
     u2 fields_count;
     field_t *fields;
     u2 attributes_count;
-    attribute_info** attributes;
+    attribute_info* attributes;
+    bootstrapMethods_attribute_t *bootstrap_method;
 } class_file_t;
 
 typedef struct
@@ -176,6 +210,7 @@ typedef enum {
     i_invokevirtual = 0xb6,
     i_invokespecial = 0xb7,
     i_invokestatic = 0xb8,
+    i_invokedynamic = 0xba,
     i_new = 0xbb,
     i_newarray = 0xbc
 } jvm_opcode_t;
@@ -191,6 +226,11 @@ CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx);
 uint16_t get_number_of_parameters(method_t *method);
 field_t *find_field(const char *name, const char *desc, class_file_t *clazz);
 method_t *find_method(const char *name, const char *desc, class_file_t *clazz);
+method_t *find_method_from_index(uint16_t idx, class_file_t *clazz, class_file_t *target_clazz);
+char *get_string_utf(constant_pool_t *cp, u2 idx);
+char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
+char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
+char *find_class_name_from_index(uint16_t idx, class_file_t *clazz);
 class_header_t get_class_header(FILE *class_file);
 class_info_t get_class_info(FILE *class_file);
 void read_method_attributes(FILE *class_file,
@@ -198,8 +238,8 @@ void read_method_attributes(FILE *class_file,
                             code_t *code,
                             constant_pool_t *cp);
 method_t *get_methods(FILE *class_file, constant_pool_t *cp);
-char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
-char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
-char *find_class_name_from_index(uint16_t idx, class_file_t *clazz);
+field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz);
+bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file, constant_pool_t *cp);
+bootstrap_methods_t *find_bootstrap_method(uint16_t idx, class_file_t *clazz);
 class_file_t get_class(FILE *class_file);
 void free_class(class_file_t *clazz);

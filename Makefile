@@ -37,7 +37,8 @@ TESTS = \
 	Constructor \
 	InvokeVirtual \
 	Static \
-	Array
+	Array \
+	Strings
 
 check: $(addprefix tests/,$(TESTS:=-result.out))
 
