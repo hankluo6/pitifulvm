@@ -246,10 +246,30 @@ constant_pool_t get_constant_pool(FILE *class_file)
             break;
         }
 
+        case CONSTANT_Long: {
+            CONSTANT_LongOrDouble_info *value = malloc(sizeof(*value));
+            assert(value && "Failed to allocate long constant");
+            value->high_bytes = read_u4(class_file);
+            value->low_bytes = read_u4(class_file);
+            constant->info = (u1 *) value;
+            constant++;
+            i++;
+            break;
+        }
+
         case CONSTANT_Class: {
             CONSTANT_Class_info *value = malloc(sizeof(*value));
             assert(value && "Failed to allocate class constant");
             value->string_index = read_u2(class_file);
+            constant->info = (u1 *) value;
+            break;
+        }
+
+        case CONSTANT_InterfaceMethodref: {
+            CONSTANT_InterfaceMethodref_info *value = malloc(sizeof(*value));
+            assert(value && "Failed to allocate interfaceMethodRef constant");
+            value->class_index = read_u2(class_file);
+            value->name_and_type_index = read_u2(class_file);
             constant->info = (u1 *) value;
             break;
         }
@@ -315,8 +335,6 @@ class_info_t get_class_info(FILE *class_file)
         .this_class = read_u2(class_file),
         .super_class = read_u2(class_file),
     };
-    u2 interfaces_count = read_u2(class_file);
-    assert(!interfaces_count && "This VM does not support interfaces.");
     return info;
 }
 
@@ -371,6 +389,19 @@ void read_method_attributes(FILE *class_file,
 }
 
 #define IS_STATIC 0x0008
+
+u2 *get_interface(FILE *class_file, constant_pool_t *cp, class_file_t *clazz)
+{
+    u2 interfaces_count = read_u2(class_file);
+    clazz->interfaces_count = interfaces_count;
+    u2 *interfaces = malloc(sizeof(*interfaces) * (interfaces_count + 1));
+    assert(interfaces&& "Failed to allocate interface");
+    u2 *interface = interfaces;
+    for (u2 i = 0; i < interfaces_count; ++i, interface++) {
+        *interface = read_u2(class_file);
+    }
+    return interfaces;
+}
 
 field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz)
 {
@@ -497,6 +528,9 @@ class_file_t get_class(FILE *class_file)
     /* Read information about the class that was compiled. */
     get_class_info(class_file);
 
+    /* Read the list of interface */
+    clazz.interfaces = get_interface(class_file, &clazz.constant_pool, &clazz);
+
     /* Read the list of fields */
     clazz.fields = get_fields(class_file, &clazz.constant_pool, &clazz);
 
@@ -523,6 +557,7 @@ void free_class(class_file_t *clazz)
     for (method_t *method = clazz->methods; method->name; method++)
         free(method->code.code);
 
+    free(clazz->interfaces);
     free(clazz->methods);
     free(clazz->fields);
 }
