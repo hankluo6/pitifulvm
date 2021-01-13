@@ -452,12 +452,17 @@ int32_t *execute(method_t *method,
             char *field_name, *field_descriptor, *class_name;
             class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
 
+            //if (native_check(class_name)) {
+                
+            //}
+
+
             if (strcmp(class_name, "java/lang/System") == 0) {
                 pc += 3;
                 break;
             }
 
-            assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
+            //assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
 
             class_file_t *new_clazz = find_class_from_heap(class_name);
 
@@ -471,10 +476,79 @@ int32_t *execute(method_t *method,
                 free(tmp);
             }
 
+            if (!new_clazz) {
+                if (strcmp(class_name, "java/lang/System") == 0) {
+                    pc += 3;
+                    break;
+                }
+                char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                /* attempt to read given class file */
+                FILE *class_file = fopen(strcat(tmp, ".class"), "r");
+                assert(class_file && "Failed to open file");
+
+                /* parse the class file */
+                new_clazz = malloc(sizeof(class_file_t));
+                *new_clazz = get_class(class_file);
+                
+                int error = fclose(class_file);
+                assert(!error && "Failed to close file");
+                add_class(new_clazz, NULL, tmp);
+
+                method_t *method = find_method("<clinit>", "()V", new_clazz);
+                if (method) {
+                    local_variable_t own_locals[method->code.max_locals];
+                    int32_t *exec_res = execute(method, own_locals, new_clazz);
+                    assert(exec_res == NULL && "<clinit> must be no return");
+                    free(exec_res);
+                }
+                free(tmp);
+            }
 
             field_t *field = find_field(field_name, field_descriptor, new_clazz);
             
-            push_int(op_stack, field->value->int_value);
+            switch (field_descriptor[0])
+            {
+            case 'B':
+                /* signed byte */
+                push_byte(op_stack, field->value->char_value);
+                break;
+            case 'C':
+                /* Unicode character code point in the Basic Multilingual Plane, encoded with UTF-16 */
+                push_byte(op_stack, field->value->char_value);
+                break;
+            case 'D':
+                /* double-precision floating-point value */
+                break;
+            case 'F':
+                /* single-precision floating-point value */
+                break;
+            case 'I':
+                /* integer */
+                push_int(op_stack, field->value->int_value);
+                break;
+            case 'J':
+                /* long integer */
+                break;
+            case 'S':
+                /* signed short */
+                push_short(op_stack, field->value->short_value);
+                break;
+            case 'Z':
+                /* true or false */
+                break;
+            case 'L':
+                /* an instance of class ClassName */
+                break;
+            case '[':
+                /* one array dimension */
+                break;
+            default:
+                fprintf(stderr, "Unknown field descriptor %c\n", field_descriptor[0]);
+                exit(1);
+            }
+
             pc += 3;
 
         } break;
@@ -489,7 +563,7 @@ int32_t *execute(method_t *method,
             
             char *field_name, *field_descriptor, *class_name;
             class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
-            assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
+            //assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
 
             class_file_t *target_class = find_class_from_heap(class_name);
 
@@ -512,6 +586,14 @@ int32_t *execute(method_t *method,
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
                 add_class(target_class, NULL, tmp);
+
+                method_t *method = find_method("<clinit>", "()V", target_class);
+                if (method) {
+                    local_variable_t own_locals[method->code.max_locals];
+                    int32_t *exec_res = execute(method, own_locals, target_class);
+                    assert(exec_res == NULL && "<clinit> must be no return");
+                    free(exec_res);
+                }
                 free(tmp);
             }
 
@@ -688,6 +770,15 @@ int32_t *execute(method_t *method,
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
                 add_class(new_class, NULL, tmp);
+
+                method_t *method = find_method("<clinit>", "()V", new_class);
+                if (method) {
+                    local_variable_t own_locals[method->code.max_locals];
+                    int32_t *exec_res = execute(method, own_locals, new_class);
+                    assert(exec_res == NULL && "<clinit> must be no return");
+                    free(exec_res);
+                }
+
                 free(tmp);
             }
 
@@ -786,6 +877,15 @@ int32_t *execute(method_t *method,
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
                 add_class(target_class, NULL, tmp);
+
+                method_t *method = find_method("<clinit>", "()V", target_class);
+                if (method) {
+                    local_variable_t own_locals[method->code.max_locals];
+                    int32_t *exec_res = execute(method, own_locals, target_class);
+                    assert(exec_res == NULL && "<clinit> must be no return");
+                    free(exec_res);
+                }
+
                 free(tmp);
             }
 
@@ -872,6 +972,15 @@ int32_t *execute(method_t *method,
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
                 add_class(target_class, NULL, tmp);
+
+                method_t *method = find_method("<clinit>", "()V", target_class);
+                if (method) {
+                    local_variable_t own_locals[method->code.max_locals];
+                    int32_t *exec_res = execute(method, own_locals, target_class);
+                    assert(exec_res == NULL && "<clinit> must be no return");
+                    free(exec_res);
+                }
+
                 free(tmp);
             }
 
@@ -980,6 +1089,16 @@ int main(int argc, char *argv[])
         strncpy(prefix, argv[1], match - argv[1] + 1);
         prefix[match - argv[1] + 1] = '\0';
     }
+    
+    method_t *method = find_method("<clinit>", "()V", clazz);
+    if (method) {
+        local_variable_t own_locals[method->code.max_locals];
+        int32_t *exec_res = execute(method, own_locals, clazz);
+        assert(exec_res == NULL && "<clinit> must be no return");
+        free(exec_res);
+    }
+
+    init_object_heap();
 
     /* execute the main method if found */
     method_t *main_method =

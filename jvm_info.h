@@ -72,10 +72,12 @@ typedef struct
 typedef enum {
     CONSTANT_Utf8 = 1,
     CONSTANT_Integer = 3,
+    CONSTANT_Long = 5,
     CONSTANT_Class = 7,
     CONSTANT_String = 8,
     CONSTANT_FieldRef = 9,
     CONSTANT_MethodRef = 10,
+    CONSTANT_InterfaceMethodref = 11,
     CONSTANT_NameAndType = 12,
     CONSTANT_MethodHandle = 15,
     CONSTANT_InvokeDynamic = 18
@@ -106,8 +108,18 @@ typedef struct {
 } CONSTANT_FieldOrMethodRef_info;
 
 typedef struct {
+    u2 class_index;
+    u2 name_and_type_index;
+} CONSTANT_InterfaceMethodref_info;
+
+typedef struct {
     int32_t bytes;
 } CONSTANT_Integer_info;
+
+typedef struct {
+    u4 high_bytes;
+    u4 low_bytes;
+} CONSTANT_LongOrDouble_info;
 
 typedef struct {
     u2 name_index;
@@ -237,6 +249,7 @@ void read_method_attributes(FILE *class_file,
                             method_info *info,
                             code_t *code,
                             constant_pool_t *cp);
+u2 *get_interface(FILE *class_file, constant_pool_t *cp, class_file_t *clazz);
 method_t *get_methods(FILE *class_file, constant_pool_t *cp);
 field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz);
 bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file, constant_pool_t *cp);
