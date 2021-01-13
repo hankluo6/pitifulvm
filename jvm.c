@@ -332,10 +332,25 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             int16_t param = code_buf[pc + 1];
 
             /* get the constant */
-            uint8_t *info = get_constant(&constant_pool, param)->info;
+            const_pool_info *info = get_constant(&constant_pool, param);
+            switch (info->tag)
+            {
+            case CONSTANT_Integer: {
+                push_int(op_stack, ((CONSTANT_Integer_info *) info->info)->bytes);
+                break;
+            }
+            case CONSTANT_String: {
+                char *src = (char *)get_constant(&constant_pool, ((CONSTANT_String_info *) info->info)->string_index)->info;
+                char *dest = malloc((strlen(src) + 1) * sizeof(char));
+                strcpy(dest, src);
+                push_ref(op_stack, dest);
+                break;
+            }
+            default:
+                assert(0 && "ldc only support int and string");
+                break;
+            }
             
-            /* need to check type */
-            push_int(op_stack, ((CONSTANT_Integer_info *) info)->bytes);
             pc += 2;
         } break;
 
@@ -630,6 +645,59 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             pc += 1;
         } break;
 
+        case i_invokedynamic: {
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+            
+            bootstrap_methods_t *bootstrap_method = find_bootstrap_method(index, clazz);
+            
+            // get_constant(&clazz->constant_pool, bootstrap_method->bootstrap_method_ref);
+
+            char *arg = NULL;
+            /* we only support makeConcatWithConstants (string concatenation), this mean argument must be only one string */
+            /* FIXME: if string contain "\0", it will cause error */
+            for (int i = 0; i < bootstrap_method->num_bootstrap_arguments; ++i) {
+                arg = get_string_utf(&clazz->constant_pool, bootstrap_method->bootstrap_arguments[i]);
+            }
+
+            /* each \u000 mean "1" in unicode, this should be replace by actual argument from stack, other are constant characters */
+            uint16_t num_params = 0;
+            uint16_t num_constant = 0;
+            char *tmp = arg;
+            while (*tmp != '\0') {
+                if (*(tmp++) == 1) {
+                    num_params++;
+                }
+            }
+            num_constant = strlen(arg) - num_params;
+            char **all_string = malloc(sizeof(char *) * num_params);
+            size_t max_len = 0;
+            for (int i = 0; i < num_params; i++) {
+                all_string[i] = (char *)pop_ref(op_stack);
+                max_len += strlen(all_string[i]);
+            }
+            max_len += num_constant;
+            char *new_str = calloc((max_len + 1), sizeof(char));
+            
+            tmp = arg;
+            while (*tmp != '\0') {
+                if (*tmp == 1) {
+                    strcat(new_str, all_string[--num_params]);
+                }
+                else {
+                    strncat(new_str, tmp, 1);
+                }
+                tmp++;
+            }
+            new_str[max_len] = '\0';
+            push_ref(op_stack, new_str);
+            
+            free(all_string);
+            
+            pc += 5;
+
+        } break;
+
         case i_invokespecial: {
             uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
             uint16_t index = ((param1 << 8) | param2);
@@ -702,12 +770,32 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 }
                 /* to handle print method */
                 if (strcmp(class_name, "java/io/PrintStream") == 0) {
-                    /* don't pop object reference because we don't implement get_static yet */
+                    /* can't pop object reference because we don't implement get_static yet */
                     /* pop_ref(op_stack); */
                     /* FIXME: the implement is not correct. */
-                    int32_t op = pop_int(op_stack);
+                    stack_entry_t element = top(op_stack);
 
-                    printf("%d\n", op);
+                    switch (element.type)
+                    {
+                    /* integer */
+                    case STACK_ENTRY_INT: 
+                    case STACK_ENTRY_SHORT: 
+                    case STACK_ENTRY_BYTE: {
+                        int32_t op = pop_int(op_stack);
+                        printf("%d\n", op);
+                        break;
+                    }
+                    /* string */
+                    case STACK_ENTRY_REF: {
+                        void *op = pop_ref(op_stack);
+                        printf("%s\n", (char *)op);
+                        break;
+                    }
+                    default: {
+                        printf("unknown print type (%d)\n", element.type);
+                        break;
+                    }
+                    }
                     pc += 3;
                     break;
                 }
@@ -779,7 +867,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             uint8_t index = code_buf[pc + 1];
 
             int count = pop_int(op_stack);
-            int *arr;
+            int *arr = NULL;
             switch (index)
             {
             case T_INT: {

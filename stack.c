@@ -43,6 +43,11 @@ void push_ref(stack_frame_t *stack, void *addr)
     stack->size++;
 }
 
+stack_entry_t top(stack_frame_t *stack)
+{
+    return stack->store[stack->size - 1];
+}
+
 int32_t stack_to_int(unsigned char *entry, size_t size)
 {
     switch (size)
