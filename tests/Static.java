@@ -1,11 +1,11 @@
 public class Static {
-    static int x, y, z;
+    static int x = 2, y = 5, z, w = 8;
     public static void main(String[] args) {
         x = 3;
         y = 5;
         z = 3 * 4;
-        Static_A.w = 1;
         Static_B.w = x + y / z * Static_A.w;
+        System.out.println(Static.w);
         System.out.println(Static.x);
         System.out.println(Static.y);
         System.out.println(Static.z);
@@ -15,9 +15,9 @@ public class Static {
 }
 
 class Static_A {
-    static int w;
+    static int w = 1;
 }
 
 class Static_B {
-    static int w;
+    static int w = 2;
 }

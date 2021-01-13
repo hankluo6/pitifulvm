@@ -575,6 +575,16 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
 
             class_file_t *target_class = find_class_from_heap(class_name);
 
+            /* if not found, add specify class path. this can be remove by record path infomation in class heap */
+            if (!target_class) {
+                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                target_class = find_class_from_heap(tmp);
+
+                free(tmp);
+            }
+
             if (target_class == NULL) {
                 if (strcmp(class_name, "java/lang/System") == 0) {
                     pc += 3;
