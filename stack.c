@@ -95,7 +95,16 @@ void pop_to_local(stack_frame_t *stack, local_variable_t *locals)
     /* convert to integer */
     if (type >= STACK_ENTRY_BYTE && type <= STACK_ENTRY_INT) {
         int32_t value = pop_int(stack);
-        memcpy(locals, &value, sizeof(int32_t));
+        memcpy(&locals->entry, &value, sizeof(int32_t));
+        locals->type = type;
+    }
+    else if (type == STACK_ENTRY_REF) {
+        void *addr = pop_ref(stack);
+        locals->entry.ptr = addr;
+        locals->type = type;
+    }
+    else {
+        assert(0 && "not support stack type");
     }
 }
 

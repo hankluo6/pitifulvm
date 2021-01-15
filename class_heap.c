@@ -32,6 +32,43 @@ class_file_t *find_class_from_heap(char *value)
     /* assert(0 && "no such a class"); */
 }
 
+/* recursively list all file in directory and add these class in heap */
+void load_native_class(char *name)
+{
+    DIR *dir;
+    struct dirent *entry;
+
+    if (!(dir = opendir(name)))
+        return;
+
+    while ((entry = readdir(dir)) != NULL) {
+        char path[1024];
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+        snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+        char *pch;
+        if ((pch = strstr(path, ".class")) != NULL) {
+
+            FILE *class_file = fopen(path, "r");
+            assert(class_file && "Failed to open file");
+
+            /* parse the class file */
+            /* change to heap */
+            class_file_t *clazz = malloc(sizeof(class_file_t));
+            *clazz = get_class(class_file);
+            
+            int error = fclose(class_file);
+            assert(!error && "Failed to close file");
+
+            add_class(clazz, NULL, path);
+        }
+        else {
+            load_native_class(path);
+        }
+    }
+    closedir(dir);
+}
+
 void free_class_heap()
 {
     for (int i = 0; i < class_heap.length; ++i) {
@@ -50,6 +87,8 @@ void free_class_heap()
             free(method->code.code);
         free(class_heap.class_info[i]->clazz->methods);
 
+        free(class_heap.class_info[i]->clazz->interfaces);
+        
         free(class_heap.class_info[i]->clazz);
         free(class_heap.class_info[i]->name);
         free(class_heap.class_info[i]);

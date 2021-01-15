@@ -59,6 +59,7 @@ typedef struct {
     char *name;
     char *descriptor;
     code_t code;
+    u2 access_flag;
 } method_t;
 
 typedef struct
@@ -68,6 +69,21 @@ typedef struct
     char *descriptor;
     variable_t *value;
 } field_t;
+
+typedef enum {
+    ACC_PUBLIC = 1,
+    ACC_PRIVATE = 2,
+    ACC_PROTECTED = 4,
+    ACC_STATIC = 8,
+    ACC_FINAL = 16,
+    ACC_SYNCHRONIZED = 32,
+    ACC_BRIDGE = 64,
+    ACC_VARARGS = 128,
+    ACC_NATIVE = 256,
+    ACC_ABSTRACT = 1024,
+    ACC_STRICT = 2048,
+    ACC_SYNTHETIC = 4096
+} method_access_t;
 
 typedef enum {
     CONSTANT_Utf8 = 1,

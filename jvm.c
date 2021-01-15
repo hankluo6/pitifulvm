@@ -11,6 +11,7 @@
 #include "stack.h"
 #include "class_heap.h"
 #include "object_heap.h"
+#include "native.h"
 
 /* TODO: add -cp arg to achieve class path select */
 char *prefix;
@@ -460,17 +461,11 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             char *field_name, *field_descriptor, *class_name;
             class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
 
-            //if (native_check(class_name)) {
-                
-            //}
 
-
-            if (strcmp(class_name, "java/lang/System") == 0) {
+            /*if (strcmp(class_name, "java/lang/System") == 0) {
                 pc += 3;
                 break;
-            }
-
-            //assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
+            }*/
 
             class_file_t *new_clazz = find_class_from_heap(class_name);
 
@@ -485,10 +480,6 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             }
 
             if (!new_clazz) {
-                if (strcmp(class_name, "java/lang/System") == 0) {
-                    pc += 3;
-                    break;
-                }
                 char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
                 strcpy(tmp, prefix);
                 strcat(tmp, class_name);
@@ -548,6 +539,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 break;
             case 'L':
                 /* an instance of class ClassName */
+                push_ref(op_stack, field->value->ptr_value);
                 break;
             case '[':
                 /* one array dimension */
@@ -567,7 +559,6 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             uint16_t index = ((param1 << 8) | param2);
 
             /* TODO: support other type (e.g reference) */
-            int32_t value = pop_int(op_stack);
             
             char *field_name, *field_descriptor, *class_name;
             class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
@@ -586,10 +577,10 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             }
 
             if (target_class == NULL) {
-                if (strcmp(class_name, "java/lang/System") == 0) {
+                /*if (strcmp(class_name, "java/lang/System") == 0) {
                     pc += 3;
                     break;
-                }
+                }*/
                 char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
                 strcpy(tmp, prefix);
                 strcat(tmp, class_name);
@@ -617,7 +608,48 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
 
             field_t *field = find_field(field_name, field_descriptor, target_class);
             
-            field->value->int_value = value;
+            switch (field_descriptor[0])
+            {
+            case 'B': 
+                /* signed byte */
+                field->value->char_value = pop_int(op_stack);
+                break;
+            case 'C': 
+                /* Unicode character code point in the Basic Multilingual Plane, encoded with UTF-16 */
+                field->value->char_value = pop_int(op_stack);
+                break;
+            case 'D':
+                /* double-precision floating-point value */
+                break;
+            case 'F':
+                /* single-precision floating-point value */
+                break;
+            case 'I': 
+                /* integer */
+                field->value->int_value = pop_int(op_stack);
+                break;
+            case 'J':
+                /* long integer */
+                break;
+            case 'S':
+                /* signed short */
+                field->value->short_value = pop_int(op_stack);
+                break;
+            case 'Z':
+                /* true or false */
+                break;
+            case 'L':
+                /* an instance of class ClassName */
+                field->value->ptr_value = pop_ref(op_stack);
+                break;
+            case '[':
+                /* one array dimension */
+                break;
+            default:
+                fprintf(stderr, "Unknown field descriptor %c\n", field_descriptor[0]);
+                exit(1);
+            }
+            
             pc += 3;
         } break;
 
@@ -706,6 +738,16 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             
             char *class_name = find_class_name_from_index(index, clazz);
             class_file_t *new_class = find_class_from_heap(class_name);
+
+            /* if not found, add specify class path. this can be remove by record path infomation in class heap */
+            if (!new_class) {
+                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                new_class = find_class_from_heap(tmp);
+
+                free(tmp);
+            }
 
             if (new_class == NULL) {
                 char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
@@ -808,6 +850,16 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             class_name = find_method_info_from_index(index, clazz, &method_name, &method_descriptor);
             class_file_t *target_class = find_class_from_heap(class_name);
 
+            /* if not found, add specify class path. this can be remove by record path infomation in class heap */
+            if (!target_class) {
+                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                target_class = find_class_from_heap(tmp);
+
+                free(tmp);
+            }
+
             if (target_class == NULL) {
                 /* this should be run when invokespecial with java/lang/Object."<init>" */
                 if (strcmp(class_name, "java/lang/Object") == 0) {
@@ -870,6 +922,16 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             char *method_name, *method_descriptor, *class_name;
             class_name = find_method_info_from_index(index, clazz, &method_name, &method_descriptor);
             class_file_t *target_class = find_class_from_heap(class_name);
+
+            /* if not found, add specify class path. this can be remove by record path infomation in class heap */
+            if (!target_class) {
+                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                target_class = find_class_from_heap(tmp);
+
+                free(tmp);
+            }
 
             if (target_class == NULL) {
                 /* not support super class method */
@@ -937,31 +999,58 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             }
 
             method_t *method = find_method(method_name, method_descriptor, target_class);
-            uint16_t num_params = get_number_of_parameters(method);
-            local_variable_t own_locals[method->code.max_locals];
-            for (int i = num_params; i >= 1; i--) {
-                pop_to_local(op_stack, &own_locals[i]);
-            }
-            object_t *obj = pop_ref(op_stack);
-            /* first argument is this pointer */
-            own_locals[0].entry.ptr = obj;
-            own_locals[0].type = STACK_ENTRY_REF;
-
-            /* FIXME: virtual method is related to object and its field */
-            int32_t *exec_res = execute(method, own_locals, obj->type);
-            if (exec_res) {
-                push_int(op_stack, *exec_res);
-            }
-            free(exec_res);
-            
-            /* remove local variable */
-            /* FIXME: object heap must be clear too */
-            for (int i = 1; i < method->code.max_locals; ++i) {
-                if (own_locals[i].type == STACK_ENTRY_REF) {
-                    free(own_locals[i].entry.ptr);
+            uint16_t num_params;
+            if (method->access_flag & ACC_NATIVE) {
+                num_params = get_number_of_parameters(method);
+                /* FIXME: only support max 20 stack */
+                local_variable_t own_locals[20];
+                memset(own_locals, 0, sizeof(own_locals));
+                for (int i = num_params; i >= 1; i--) {
+                    pop_to_local(op_stack, &own_locals[i]);
+                }
+                object_t *obj = pop_ref(op_stack);
+                /* first argument is this pointer */
+                own_locals[0].entry.ptr = obj;
+                own_locals[0].type = STACK_ENTRY_REF;
+                int32_t *exec_res = native_method(method, own_locals, obj->type);
+                if (exec_res) {
+                    push_int(op_stack, *exec_res);
+                }
+                free(exec_res);
+                
+                /* remove local variable */
+                /* FIXME: object heap must be clear too */
+                for (int i = num_params + 1; i < 20; ++i) {
+                    if (own_locals[i].type == STACK_ENTRY_REF) {
+                        free(own_locals[i].entry.ptr);
+                    }
                 }
             }
-            
+            else {
+                num_params = get_number_of_parameters(method);
+                local_variable_t own_locals[method->code.max_locals];
+                for (int i = num_params; i >= 1; i--) {
+                    pop_to_local(op_stack, &own_locals[i]);
+                }
+                object_t *obj = pop_ref(op_stack);
+                /* first argument is this pointer */
+                own_locals[0].entry.ptr = obj;
+                own_locals[0].type = STACK_ENTRY_REF;
+
+                int32_t *exec_res = execute(method, own_locals, obj->type);
+                if (exec_res) {
+                    push_int(op_stack, *exec_res);
+                }
+                free(exec_res);
+                
+                /* remove local variable */
+                /* FIXME: object heap must be clear too */
+                for (int i = num_params + 1; i < method->code.max_locals; ++i) {
+                    if (own_locals[i].type == STACK_ENTRY_REF) {
+                        free(own_locals[i].entry.ptr);
+                    }
+                }
+            }
             pc += 3;
         } break;
 
@@ -1030,7 +1119,20 @@ int main(int argc, char *argv[])
     assert(!error && "Failed to close file");
 
     init_class_heap();
+    init_object_heap();
+    load_native_class("java");
 
+    for (int i = 0; i < class_heap.length; ++i) {
+        method_t *method = find_method("<clinit>", "()V", class_heap.class_info[i]->clazz);
+        if (method) {
+            local_variable_t own_locals[method->code.max_locals];
+            int32_t *exec_res = execute(method, own_locals, class_heap.class_info[i]->clazz);
+            assert(exec_res == NULL && "<clinit> must be no return");
+            free(exec_res);
+        }
+    }
+
+    /* <clinit> */
     char *match = strrchr(argv[1], '/');
     if (match == NULL) {
         add_class(clazz, NULL, argv[1]);
@@ -1038,7 +1140,7 @@ int main(int argc, char *argv[])
         prefix[0] = '\0';
     } else {
         add_class(clazz, NULL, match + 1);
-        prefix = malloc((match - argv[1]) * sizeof(char));
+        prefix = malloc((match - argv[1] + 1) * sizeof(char));
         strncpy(prefix, argv[1], match - argv[1] + 1);
         prefix[match - argv[1] + 1] = '\0';
     }
@@ -1051,7 +1153,6 @@ int main(int argc, char *argv[])
         free(exec_res);
     }
 
-    init_object_heap();
 
     /* execute the main method if found */
     method_t *main_method =
