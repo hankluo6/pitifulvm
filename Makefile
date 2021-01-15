@@ -1,20 +1,30 @@
 CC ?= gcc
 CFLAGS = -std=c99 -Os -Wall -Wextra
+JAVAC = javac
+PATCH = --patch-module java.base=java
 
 BIN = jvm
+<<<<<<< HEAD
 OBJ = jvm.o stack.o jvm_info.o class_heap.o object_heap.o
+=======
+OBJ = jvm.o stack.o jvm_info.o class_heap.o object_heap.o native.o
+JAVA = target
+>>>>>>> 0c9995f... Implement native java class to let invokevirtual more resonable
 
 include mk/common.mk
 include mk/jdk.mk
 
 # Build PitifulVM
-all: $(BIN)
+all: target $(BIN)
 $(BIN): $(OBJ)
 	$(VECHO) "  CC+LD\t\t$@\n"
 	$(Q)$(CC) -o $@ $^
 
 %.o: %.c
-	$(Q)$(CC) $(CFLAGS) -c $<
+	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
+
+target:
+	$(Q)$(JAVAC) $(PATCH) java/*/*.java
 
 TESTS = \
 	Factorial \
@@ -40,7 +50,7 @@ TESTS = \
 	Array \
 	Strings
 
-check: $(addprefix tests/,$(TESTS:=-result.out))
+check: target $(addprefix tests/,$(TESTS:=-result.out)) 
 
 tests/%.class: tests/%.java
 	$(Q)$(JAVAC) $^
@@ -59,7 +69,7 @@ tests/%-result.out: tests/%-expected.out tests/%-actual.out
 	else $(call pass); fi
 
 clean:
-	$(Q)$(RM) *.o jvm tests/*.out tests/*.class $(REDIR)
+	$(Q)$(RM) *.o jvm tests/*.out tests/*.class java/*/*.class $(REDIR)
 
 .PRECIOUS: %.o tests/%.class tests/%-expected.out tests/%-actual.out tests/%-result.out
 

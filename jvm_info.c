@@ -84,7 +84,16 @@ char *get_string_utf(constant_pool_t *cp, u2 idx)
  */
 uint16_t get_number_of_parameters(method_t *method)
 {
-    /* Type descriptors have the length ( + #params + ) + return type */
+    uint16_t num_param = 0;
+    if (method->descriptor[1] == 'L') {
+        for (size_t i = 0; i < strlen(method->descriptor); ++i) {
+            if (method->descriptor[i] == ';') {
+                num_param++;
+            }
+        }
+        /* Type descriptors have the length ( + #params + ) + return type */
+        return num_param;
+    }
     return strlen(method->descriptor) - 3;
 }
 
@@ -357,6 +366,7 @@ void read_method_attributes(FILE *class_file,
                             constant_pool_t *cp)
 {
     bool found_code = false;
+    code->code = NULL;
     for (u2 i = 0; i < info->attributes_count; i++) {
         attribute_info ainfo = {
             .attribute_name_index = read_u2(class_file),
@@ -383,7 +393,8 @@ void read_method_attributes(FILE *class_file,
         /* Skip the rest of the attribute */
         fseek(class_file, attribute_end, SEEK_SET);
     }
-    assert(found_code && "Missing method code");
+    if (!(info->access_flags | ACC_NATIVE))
+        assert(found_code && "Missing method code");
 }
 
 #define IS_STATIC 0x0008
@@ -393,7 +404,7 @@ u2 *get_interface(FILE *class_file, constant_pool_t *cp, class_file_t *clazz)
     u2 interfaces_count = read_u2(class_file);
     clazz->interfaces_count = interfaces_count;
     u2 *interfaces = malloc(sizeof(*interfaces) * (interfaces_count + 1));
-    assert(interfaces&& "Failed to allocate interface");
+    assert(interfaces && "Failed to allocate interface");
     u2 *interface = interfaces;
     for (u2 i = 0; i < interfaces_count; ++i, interface++) {
         *interface = read_u2(class_file);
@@ -454,6 +465,13 @@ method_t *get_methods(FILE *class_file, constant_pool_t *cp)
         const_pool_info *descriptor = get_constant(cp, info.descriptor_index);
         assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
         method->descriptor = (char *) descriptor->info;
+        method->access_flag = info.access_flags;
+        /* FIXME: this VM can only execute static methods, while every class
+         * has a constructor method <init>
+         */
+        /* if (strcmp(method->name, "<init>"))
+            assert((info.access_flags & IS_STATIC) &&
+                   "Only static methods are supported by this VM."); */
 
         read_method_attributes(class_file, &info, &method->code, cp);
     }
