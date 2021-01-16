@@ -744,7 +744,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
 
             /* if not found, add specify class path. this can be remove by record path infomation in class heap */
             if (!new_class) {
-                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                char *tmp = malloc(strlen(class_name) + strlen(prefix) + 1);
                 strcpy(tmp, prefix);
                 strcat(tmp, class_name);
                 new_class = find_class_from_heap(tmp);
@@ -855,7 +855,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
 
             /* if not found, add specify class path. this can be remove by record path infomation in class heap */
             if (!target_class) {
-                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                char *tmp = malloc(strlen(class_name) + strlen(prefix) + 1);
                 strcpy(tmp, prefix);
                 strcat(tmp, class_name);
                 target_class = find_class_from_heap(tmp);
@@ -928,7 +928,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
 
             /* if not found, add specify class path. this can be remove by record path infomation in class heap */
             if (!target_class) {
-                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                char *tmp = malloc(strlen(class_name) + strlen(prefix) + 1);
                 strcpy(tmp, prefix);
                 strcat(tmp, class_name);
                 target_class = find_class_from_heap(tmp);
