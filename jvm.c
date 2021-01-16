@@ -83,14 +83,6 @@ static inline void ineg(stack_frame_t *op_stack)
     push_int(op_stack, -op1);
 }
 
-static inline void invokevirtual(stack_frame_t *op_stack)
-{
-    int32_t op = pop_int(op_stack);
-
-    /* FIXME: the implement is not correct. */
-    printf("%d\n", op);
-}
-
 static inline void iconst(stack_frame_t *op_stack, uint8_t current)
 {
     push_int(op_stack, current - i_iconst_0);
@@ -342,8 +334,9 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             }
             case CONSTANT_String: {
                 char *src = (char *)get_constant(&constant_pool, ((CONSTANT_String_info *) info->info)->string_index)->info;
-                char *dest = malloc((strlen(src) + 1) * sizeof(char));
-                strcpy(dest, src);
+                //char *dest = malloc((strlen(src) + 1) * sizeof(char));
+                //strcpy(dest, src);
+                char *dest = create_string(clazz, src);
                 push_ref(op_stack, dest);
                 break;
             }
@@ -471,7 +464,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
 
             /* if not found, add specify class path. this can be remove by record path infomation in class heap */
             if (!new_clazz) {
-                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                char *tmp = malloc(strlen(class_name) + strlen(prefix) + 1);
                 strcpy(tmp, prefix);
                 strcat(tmp, class_name);
                 new_clazz = find_class_from_heap(tmp);
@@ -511,11 +504,11 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             {
             case 'B':
                 /* signed byte */
-                push_byte(op_stack, field->value->char_value);
+                push_byte(op_stack, field->value->value.char_value);
                 break;
             case 'C':
                 /* Unicode character code point in the Basic Multilingual Plane, encoded with UTF-16 */
-                push_byte(op_stack, field->value->char_value);
+                push_byte(op_stack, field->value->value.char_value);
                 break;
             case 'D':
                 /* double-precision floating-point value */
@@ -525,21 +518,21 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 break;
             case 'I':
                 /* integer */
-                push_int(op_stack, field->value->int_value);
+                push_int(op_stack, field->value->value.int_value);
                 break;
             case 'J':
                 /* long integer */
                 break;
             case 'S':
                 /* signed short */
-                push_short(op_stack, field->value->short_value);
+                push_short(op_stack, field->value->value.short_value);
                 break;
             case 'Z':
                 /* true or false */
                 break;
             case 'L':
                 /* an instance of class ClassName */
-                push_ref(op_stack, field->value->ptr_value);
+                push_ref(op_stack, field->value->value.ptr_value);
                 break;
             case '[':
                 /* one array dimension */
@@ -568,7 +561,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
 
             /* if not found, add specify class path. this can be remove by record path infomation in class heap */
             if (!target_class) {
-                char *tmp = malloc(sizeof(class_name) + strlen(prefix));
+                char *tmp = malloc(strlen(class_name) + strlen(prefix) + 1);
                 strcpy(tmp, prefix);
                 strcat(tmp, class_name);
                 target_class = find_class_from_heap(tmp);
@@ -612,11 +605,13 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             {
             case 'B': 
                 /* signed byte */
-                field->value->char_value = pop_int(op_stack);
+                field->value->value.char_value = pop_int(op_stack);
+                field->value->type = BYTE;
                 break;
             case 'C': 
                 /* Unicode character code point in the Basic Multilingual Plane, encoded with UTF-16 */
-                field->value->char_value = pop_int(op_stack);
+                field->value->value.char_value = pop_int(op_stack);
+                field->value->type = BYTE;
                 break;
             case 'D':
                 /* double-precision floating-point value */
@@ -626,21 +621,24 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 break;
             case 'I': 
                 /* integer */
-                field->value->int_value = pop_int(op_stack);
+                field->value->value.int_value = pop_int(op_stack);
+                field->value->type = INT;
                 break;
             case 'J':
                 /* long integer */
                 break;
             case 'S':
                 /* signed short */
-                field->value->short_value = pop_int(op_stack);
+                field->value->value.short_value = pop_int(op_stack);
+                field->value->type = SHORT;
                 break;
             case 'Z':
                 /* true or false */
                 break;
             case 'L':
                 /* an instance of class ClassName */
-                field->value->ptr_value = pop_ref(op_stack);
+                field->value->value.ptr_value = pop_ref(op_stack);
+                field->value->type = PTR;
                 break;
             case '[':
                 /* one array dimension */
@@ -668,6 +666,8 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
         case i_aload: {
             int32_t param = code_buf[pc + 1];
             object_t *obj = locals[param].entry.ptr;
+            //object_t *new_obj = malloc(sizeof(obj));
+            //memset(new_obj->ptr, obj->ptr, sizeof(*obj->ptr));
             push_ref(op_stack, obj);
             pc += 2;
         } break;
@@ -685,6 +685,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
         case i_astore: {
             int32_t param = code_buf[pc + 1];
             locals[param].entry.ptr = pop_ref(op_stack);
+            locals[param].type = STACK_ENTRY_REF;
             pc += 2;
         } break;
 
@@ -694,6 +695,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
         case i_astore_3: {
             int32_t param = current - i_astore_0;
             locals[param].entry.ptr = pop_ref(op_stack);
+            locals[param].type = STACK_ENTRY_REF;
             pc += 1;
         } break;
 
@@ -711,7 +713,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             char *field_name, *field_descriptor, *class_name;
             class_name = find_field_info_from_index(index, obj->type, &field_name, &field_descriptor);
             variable_t *addr = find_field_addr(obj, field_name);
-            push_int(op_stack, addr->int_value);
+            push_int(op_stack, addr->value.int_value);
             pc += 3;
         } break;
 
@@ -727,7 +729,8 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             class_name = find_field_info_from_index(index, obj->type, &field_name, &field_descriptor);
             assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
             variable_t *addr = find_field_addr(obj, field_name);
-            addr->int_value = value;
+            addr->value.int_value = value;
+            addr->type = INT;
             pc += 3;
         } break;
 
@@ -821,7 +824,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             }
             max_len += num_constant;
             char *new_str = calloc((max_len + 1), sizeof(char));
-            
+
             tmp = arg;
             while (*tmp != '\0') {
                 if (*tmp == 1) {
@@ -833,8 +836,8 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 tmp++;
             }
             new_str[max_len] = '\0';
+            create_string(clazz, new_str);
             push_ref(op_stack, new_str);
-            
             free(all_string);
             
             pc += 5;
@@ -1022,13 +1025,14 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 /* FIXME: object heap must be clear too */
                 for (int i = num_params + 1; i < 20; ++i) {
                     if (own_locals[i].type == STACK_ENTRY_REF) {
-                        free(own_locals[i].entry.ptr);
+                        //free(own_locals[i].entry.ptr);
                     }
                 }
             }
             else {
                 num_params = get_number_of_parameters(method);
                 local_variable_t own_locals[method->code.max_locals];
+                memset(own_locals, 0, sizeof(own_locals));
                 for (int i = num_params; i >= 1; i--) {
                     pop_to_local(op_stack, &own_locals[i]);
                 }
@@ -1047,7 +1051,7 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 /* FIXME: object heap must be clear too */
                 for (int i = num_params + 1; i < method->code.max_locals; ++i) {
                     if (own_locals[i].type == STACK_ENTRY_REF) {
-                        free(own_locals[i].entry.ptr);
+                        //free(own_locals[i].entry.ptr);
                     }
                 }
             }
@@ -1075,11 +1079,11 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             uint8_t index = code_buf[pc + 1];
 
             int count = pop_int(op_stack);
-            int *arr = NULL;
+            void *arr = NULL;
             switch (index)
             {
             case T_INT: {
-                arr = malloc(count * sizeof(int));
+                arr = create_array(clazz, count);
             } break;
             case T_BOOLEN:
             case T_CHAR:
@@ -1140,7 +1144,7 @@ int main(int argc, char *argv[])
         prefix[0] = '\0';
     } else {
         add_class(clazz, NULL, match + 1);
-        prefix = malloc((match - argv[1] + 1) * sizeof(char));
+        prefix = malloc((match - argv[1] + 2) * sizeof(char));
         strncpy(prefix, argv[1], match - argv[1] + 1);
         prefix[match - argv[1] + 1] = '\0';
     }
@@ -1160,16 +1164,23 @@ int main(int argc, char *argv[])
     assert(main_method && "Missing main() method");
 
     /* FIXME: locals[0] contains a reference to String[] args, but right now
-     * we lack of the support for java.lang.Object. Leave it uninitialized.
+     * we lack of the support for java.lang.Object. Leave it unin]itialized.
      */
     local_variable_t locals[main_method->code.max_locals];
+    memset(locals, 0, sizeof(locals));
     int32_t *result = execute(main_method, locals, clazz);
     assert(!result && "main() should return void");
 
+    for (int i = 1; i < main_method->code.max_locals; ++i) {
+        if (locals[i].type == STACK_ENTRY_REF) {
+            //free(locals[i].entry.ptr);
+        }
+    }
+
     //free_class(&clazz);
     free(prefix);
-    free_class_heap();
     free_object_heap();
+    free_class_heap();
 
     return 0;
 }
