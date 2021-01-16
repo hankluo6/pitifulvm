@@ -25,7 +25,8 @@ typedef enum
     BYTE = 0,
     SHORT = 1,
     INT = 2,
-    PTR = 3
+    PTR = 3,
+    ARRAY_PTR = 4
 } variable_type_t;
 
 typedef enum

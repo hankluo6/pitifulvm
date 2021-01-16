@@ -197,6 +197,7 @@ typedef enum {
     i_aload_2 = 0x2c,
     i_aload_3 = 0x2d,
     i_iaload = 0x2e,
+    i_aaload = 0x32,
     i_istore = 0x36,
     i_astore = 0x3a,
     i_istore_0 = 0x3b,
@@ -240,7 +241,8 @@ typedef enum {
     i_invokestatic = 0xb8,
     i_invokedynamic = 0xba,
     i_new = 0xbb,
-    i_newarray = 0xbc
+    i_newarray = 0xbc,
+    i_multianewarray = 0xc5,
 } jvm_opcode_t;
 
 u1 read_u1(FILE *class_file);
@@ -255,6 +257,7 @@ uint16_t get_number_of_parameters(method_t *method);
 field_t *find_field(const char *name, const char *desc, class_file_t *clazz);
 method_t *find_method(const char *name, const char *desc, class_file_t *clazz);
 method_t *find_method_from_index(uint16_t idx, class_file_t *clazz, class_file_t *target_clazz);
+CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx);
 char *get_string_utf(constant_pool_t *cp, u2 idx);
 char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
 char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);

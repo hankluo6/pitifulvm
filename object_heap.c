@@ -37,6 +37,27 @@ void *create_array(class_file_t *clazz, int count)
     return arr;
 }
 
+/* only support integer */
+void **create_two_dimension_array(class_file_t *clazz, int count1, int count2)
+{
+    int **arr = malloc(count1 * sizeof(int *));
+    for (int i = 0; i < count1; ++i) {
+        arr[i] = malloc(count2 * sizeof(int));
+    }
+    object_t *arr_obj = malloc(sizeof(object_t));
+    arr_obj->ptr = malloc(sizeof(variable_t) * 3);
+    arr_obj->ptr[0].type = ARRAY_PTR;
+    arr_obj->ptr[0].value.ptr_value = arr;
+    arr_obj->ptr[1].type = INT;
+    arr_obj->ptr[1].value.int_value = count1;
+    arr_obj->ptr[2].type = INT;
+    arr_obj->ptr[2].value.int_value = count2;
+    arr_obj->type = clazz;
+    object_heap.objects[object_heap.length++] = arr_obj;
+
+    return (void **)arr;
+}
+
 char *create_string(class_file_t *clazz, char *src)
 {
     char *dest = malloc((strlen(src) + 1) * sizeof(char));
@@ -101,8 +122,16 @@ void free_object_heap()
 {
     for (int i = 0; i < object_heap.length; ++i) {
         if (object_heap.objects[i]->ptr) {
-            if (object_heap.objects[i]->ptr->type == 3) {
+            if (object_heap.objects[i]->ptr->type == PTR) {
                 free(object_heap.objects[i]->ptr->value.ptr_value);
+            }
+            else if (object_heap.objects[i]->ptr->type == ARRAY_PTR) {
+                int count = object_heap.objects[i]->ptr[1].value.int_value;
+                for (int j = 0; j < count; ++j) {
+                    int **addr = object_heap.objects[i]->ptr[0].value.ptr_value;
+                    free(addr[j]);
+                }
+                free(object_heap.objects[i]->ptr[0].value.ptr_value);
             }
         }
         free(object_heap.objects[i]->ptr);
