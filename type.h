@@ -12,7 +12,21 @@ typedef union
     u2 short_value;
     u4 int_value;
     void *ptr_value;
+} value_t;
+
+typedef struct
+{
+    value_t value;
+    int type;    
 } variable_t;
+
+typedef enum
+{
+    BYTE = 0,
+    SHORT = 1,
+    INT = 2,
+    PTR = 3
+} variable_type_t;
 
 typedef enum
 {

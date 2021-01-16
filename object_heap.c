@@ -11,11 +11,44 @@ object_t* create_object(class_file_t *clazz)
 {
     size_t size = clazz->fields_count * sizeof(variable_t);
     object_t *new_obj = malloc(sizeof(object_t));
-    new_obj->ptr = malloc(size);
+    /* prevent undefined behavior */
+    if (size == 0) {
+        new_obj->ptr = NULL;
+    }
+    else {
+        new_obj->ptr = malloc(size);
+    }
     new_obj->type = clazz;
     object_heap.objects[object_heap.length++] = new_obj;
 
     return new_obj;
+}
+
+void *create_array(class_file_t *clazz, int count)
+{
+    void *arr = malloc(count * sizeof(int));
+    object_t *arr_obj = malloc(sizeof(object_t));
+    arr_obj->ptr = malloc(sizeof(variable_t));
+    arr_obj->ptr->type = PTR;
+    arr_obj->ptr->value.ptr_value = arr;
+    arr_obj->type = clazz;
+    object_heap.objects[object_heap.length++] = arr_obj;
+
+    return arr;
+}
+
+char *create_string(class_file_t *clazz, char *src)
+{
+    char *dest = malloc((strlen(src) + 1) * sizeof(char));
+    strcpy(dest, src);
+    object_t *str_obj = malloc(sizeof(object_t));
+    str_obj->ptr = malloc(sizeof(variable_t));
+    str_obj->ptr->type = PTR;
+    str_obj->ptr->value.ptr_value = dest;
+    str_obj->type = clazz;
+    object_heap.objects[object_heap.length++] = str_obj;
+
+    return dest;
 }
 
 size_t get_field_size(class_file_t *clazz)
@@ -67,6 +100,11 @@ variable_t *find_field_addr(object_t *obj, char *name)
 void free_object_heap()
 {
     for (int i = 0; i < object_heap.length; ++i) {
+        if (object_heap.objects[i]->ptr) {
+            if (object_heap.objects[i]->ptr->type == 3) {
+                free(object_heap.objects[i]->ptr->value.ptr_value);
+            }
+        }
         free(object_heap.objects[i]->ptr);
         free(object_heap.objects[i]);
     }

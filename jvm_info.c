@@ -154,7 +154,7 @@ bootstrap_methods_t *find_bootstrap_method(uint16_t idx, class_file_t *clazz)
 {
     const_pool_info *info = get_constant(&clazz->constant_pool, idx);
     assert(info->tag == CONSTANT_InvokeDynamic && "Expected a InvokeDynanmic");
-    return &clazz->bootstrap_method->bootstrap_methods[((CONSTANT_InvokeDynamic_info *)info->info)->bootstrap_method_attr_index];
+    return &clazz->bootstrap->bootstrap_methods[((CONSTANT_InvokeDynamic_info *)info->info)->bootstrap_method_attr_index];
 }
 
 
@@ -547,10 +547,11 @@ class_file_t get_class(FILE *class_file)
     clazz.methods = get_methods(class_file, &clazz.constant_pool);
 
     /* Read the list of attributes */
-    clazz.bootstrap_method = read_bootstrap_attribute(class_file, &clazz.constant_pool);
+    clazz.bootstrap = read_bootstrap_attribute(class_file, &clazz.constant_pool);
     return clazz;
 }
 
+#if 0
 /**
  * Frees the memory used by a parsed class file.
  *
@@ -566,7 +567,9 @@ void free_class(class_file_t *clazz)
     for (method_t *method = clazz->methods; method->name; method++)
         free(method->code.code);
 
+
     free(clazz->interfaces);
     free(clazz->methods);
     free(clazz->fields);
 }
+#endif

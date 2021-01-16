@@ -165,7 +165,7 @@ typedef struct {
     field_t *fields;
     u2 attributes_count;
     attribute_info* attributes;
-    bootstrapMethods_attribute_t *bootstrap_method;
+    bootstrapMethods_attribute_t *bootstrap;
 } class_file_t;
 
 typedef struct
