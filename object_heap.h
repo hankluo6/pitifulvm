@@ -24,4 +24,5 @@ void free_object_heap();
 object_t* create_object(class_file_t *clazz);
 variable_t *find_field_addr(object_t *obj, char *name);
 void *create_array(class_file_t *clazz, int count);
+void **create_two_dimension_array(class_file_t *clazz, int count1, int count2);
 char *create_string(class_file_t *clazz, char *src);

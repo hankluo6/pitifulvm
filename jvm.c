@@ -446,6 +446,13 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             pc += 1;
         } break;
 
+        case i_aaload: {
+            int32_t index = pop_int(op_stack);
+            int32_t **addr = pop_ref(op_stack);
+            push_ref(op_stack, addr[index]);
+            pc += 1;
+        } break;
+
         /* Get static field from class */
         case i_getstatic: {
             uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
@@ -534,9 +541,17 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 /* an instance of class ClassName */
                 push_ref(op_stack, field->value->value.ptr_value);
                 break;
-            case '[':
-                /* one array dimension */
+            case '[': {
+                if (field_descriptor[1] != '[') {
+                    /* one array dimension */
+                    push_ref(op_stack, field->value->value.ptr_value);
+                }
+                if (field_descriptor[1] == '[') {
+                    /* two array dimension */
+                    push_ref(op_stack, field->value->value.ptr_value);
+                }
                 break;
+            }
             default:
                 fprintf(stderr, "Unknown field descriptor %c\n", field_descriptor[0]);
                 exit(1);
@@ -640,9 +655,19 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
                 field->value->value.ptr_value = pop_ref(op_stack);
                 field->value->type = PTR;
                 break;
-            case '[':
-                /* one array dimension */
+            case '[': {
+                if (field_descriptor[1] != '[') {
+                    /* one array dimension */
+                    field->value->value.ptr_value = pop_ref(op_stack);
+                    field->value->type = PTR;
+                }
+                if (field_descriptor[1] == '[') {
+                    /* two array dimension */
+                    field->value->value.ptr_value = pop_ref(op_stack);
+                    field->value->type = ARRAY_PTR;
+                }
                 break;
+            }
             default:
                 fprintf(stderr, "Unknown field descriptor %c\n", field_descriptor[0]);
                 exit(1);
@@ -1097,6 +1122,19 @@ int32_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz
             }
             push_ref(op_stack, arr);
             pc += 2;
+        } break;
+
+        case i_multianewarray: {
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+            uint8_t dimensions = code_buf[pc + 3];
+            char *type = (char *)(get_constant(&clazz->constant_pool, get_class_name(&clazz->constant_pool, index)->string_index))->info;
+            assert (dimensions == 2 && strcmp(type, "[[I") == 0 && "this VM only support two dimension integer array");
+            
+            int32_t x = pop_int(op_stack), y = pop_int(op_stack);
+            void **arr = create_two_dimension_array(clazz, x, y);
+            push_ref(op_stack, arr);
+            pc += 4;
         } break;
 
         }
