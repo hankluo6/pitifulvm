@@ -5,12 +5,14 @@
 typedef uint8_t u1;
 typedef uint16_t u2;
 typedef uint32_t u4;
+typedef uint64_t u8;
 
 typedef union
 {
     u1 char_value;
     u2 short_value;
     u4 int_value;
+    u8 long_value;
     void *ptr_value;
 } value_t;
 
@@ -22,11 +24,15 @@ typedef struct
 
 typedef enum
 {
-    BYTE = 0,
-    SHORT = 1,
-    INT = 2,
-    PTR = 3,
-    ARRAY_PTR = 4
+    NONE = 0,
+    BYTE = 1,
+    SHORT = 2,
+    INT = 3,
+    LONG = 4,
+    PTR = 5,
+    ARRAY_PTR = 6,
+    MULTARRAY_PTR = 7,
+    STR_PTR = 8
 } variable_type_t;
 
 typedef enum

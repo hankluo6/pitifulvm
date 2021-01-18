@@ -85,16 +85,16 @@ char *get_string_utf(constant_pool_t *cp, u2 idx)
 uint16_t get_number_of_parameters(method_t *method)
 {
     uint16_t num_param = 0;
-    if (method->descriptor[1] == 'L') {
-        for (size_t i = 0; i < strlen(method->descriptor); ++i) {
-            if (method->descriptor[i] == ';') {
-                num_param++;
-            }
+    for (size_t i = 1; method->descriptor[i] != ')'; ++i) {
+        if (method->descriptor[i] == 'L') {
+            while (method->descriptor[++i] != ';');
         }
-        /* Type descriptors have the length ( + #params + ) + return type */
-        return num_param;
+        if (method->descriptor[i] == '[') {
+            while (method->descriptor[i + 1] != ')' && method->descriptor[++i] == '[');
+        }
+        num_param++;
     }
-    return strlen(method->descriptor) - 3;
+    return num_param;
 }
 
 field_t *find_field(const char *name, const char *desc, class_file_t *clazz)
@@ -260,6 +260,7 @@ constant_pool_t get_constant_pool(FILE *class_file)
             value->low_bytes = read_u4(class_file);
             constant->info = (u1 *) value;
             constant++;
+            constant->info = NULL;
             i++;
             break;
         }
@@ -335,14 +336,11 @@ constant_pool_t get_constant_pool(FILE *class_file)
     return cp;
 }
 
-class_info_t get_class_info(FILE *class_file)
+void get_class_info(FILE *class_file, class_file_t *clazz)
 {
-    class_info_t info = {
-        .access_flags = read_u2(class_file),
-        .this_class = read_u2(class_file),
-        .super_class = read_u2(class_file),
-    };
-    return info;
+    clazz->access_flags = read_u2(class_file);
+    clazz->this_class = read_u2(class_file);
+    clazz->super_class = read_u2(class_file);
 }
 
 void read_field_attributes(FILE *class_file,
@@ -535,7 +533,7 @@ class_file_t get_class(FILE *class_file)
     class_file_t clazz = {.constant_pool = get_constant_pool(class_file)};
 
     /* Read information about the class that was compiled. */
-    get_class_info(class_file);
+    get_class_info(class_file, &clazz);
 
     /* Read the list of interface */
     clazz.interfaces = get_interface(class_file, &clazz.constant_pool, &clazz);

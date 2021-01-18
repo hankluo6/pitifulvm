@@ -2,3 +2,5 @@
 jvm
 tests/*.out
 tests/*.class
+.vscode/
+Dhrystone/

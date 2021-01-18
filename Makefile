@@ -48,7 +48,8 @@ TESTS = \
 	InvokeVirtual \
 	Static \
 	Array \
-	Strings
+	Strings \
+	Switch
 
 check: target $(addprefix tests/,$(TESTS:=-result.out)) 
 
