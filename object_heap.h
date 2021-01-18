@@ -8,6 +8,7 @@ typedef struct
 {
     variable_t* ptr;
     class_file_t *type;
+    size_t field_count;
 } object_t;
 
 

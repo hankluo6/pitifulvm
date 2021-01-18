@@ -36,6 +36,14 @@ void push_int(stack_frame_t *stack, int32_t value)
     stack->size++;
 }
 
+void push_long(stack_frame_t *stack, int64_t value)
+{
+    unsigned char *tmp = stack->store[stack->size].entry.val;
+    memcpy(tmp, &value, sizeof(int64_t));
+    stack->store[stack->size].type = STACK_ENTRY_LONG;
+    stack->size++;
+}
+
 void push_ref(stack_frame_t *stack, void *addr)
 {
     stack->store[stack->size].entry.ptr = addr;
@@ -48,7 +56,7 @@ stack_entry_t top(stack_frame_t *stack)
     return stack->store[stack->size - 1];
 }
 
-int32_t stack_to_int(unsigned char *entry, size_t size)
+int64_t stack_to_int(unsigned char *entry, size_t size)
 {
     switch (size)
     {
@@ -69,17 +77,23 @@ int32_t stack_to_int(unsigned char *entry, size_t size)
         int32_t value;
         memcpy(&value, entry, size);
         return value;
-    }   
+    }
+    /* int64_t */
+    case 8: {
+        int64_t value;
+        memcpy(&value, entry, size);
+        return value;
+    }
     default:
-        assert("stack entry not an interger");
+        assert(0 && "stack entry not an interger");
         return -1;
     }
 }
 
-int32_t pop_int(stack_frame_t *stack)
+int64_t pop_int(stack_frame_t *stack)
 {
     size_t size = get_type_size(stack->store[stack->size - 1].type);
-    int32_t value = stack_to_int(stack->store[stack->size - 1].entry.val, size);
+    int64_t value = stack_to_int(stack->store[stack->size - 1].entry.val, size);
     stack->size--;
     return value;
 }
@@ -93,9 +107,9 @@ void pop_to_local(stack_frame_t *stack, local_variable_t *locals)
 {
     stack_entry_type_t type = stack->store[stack->size - 1].type;
     /* convert to integer */
-    if (type >= STACK_ENTRY_BYTE && type <= STACK_ENTRY_INT) {
-        int32_t value = pop_int(stack);
-        memcpy(&locals->entry, &value, sizeof(int32_t));
+    if (type >= STACK_ENTRY_BYTE && type <= STACK_ENTRY_LONG) {
+        int64_t value = pop_int(stack);
+        memcpy(&locals->entry, &value, sizeof(int64_t));
         locals->type = type;
     }
     else if (type == STACK_ENTRY_REF) {

@@ -2,8 +2,8 @@
 
 void init_object_heap()
 {
-    /* max contain 100 object */
-    object_heap.objects = malloc(sizeof(object_t*) * 100);
+    /* max contain 500 object */
+    object_heap.objects = malloc(sizeof(object_t*) * 500);
     object_heap.length = 0;
 }
 
@@ -11,16 +11,20 @@ object_t* create_object(class_file_t *clazz)
 {
     size_t size = clazz->fields_count * sizeof(variable_t);
     object_t *new_obj = malloc(sizeof(object_t));
+    new_obj->field_count = clazz->fields_count;
     /* prevent undefined behavior */
     if (size == 0) {
         new_obj->ptr = NULL;
     }
     else {
         new_obj->ptr = malloc(size);
+        memset(&new_obj->ptr->value, 0, size);
+        for (int i = 0; i < clazz->fields_count; ++i) {
+            new_obj->ptr[i].type = NONE;
+        }
     }
     new_obj->type = clazz;
     object_heap.objects[object_heap.length++] = new_obj;
-
     return new_obj;
 }
 
@@ -29,10 +33,11 @@ void *create_array(class_file_t *clazz, int count)
     void *arr = malloc(count * sizeof(int));
     object_t *arr_obj = malloc(sizeof(object_t));
     arr_obj->ptr = malloc(sizeof(variable_t));
-    arr_obj->ptr->type = PTR;
+    arr_obj->ptr->type = ARRAY_PTR;
     arr_obj->ptr->value.ptr_value = arr;
     arr_obj->type = clazz;
     object_heap.objects[object_heap.length++] = arr_obj;
+    arr_obj->field_count = 1;
 
     return arr;
 }
@@ -46,7 +51,7 @@ void **create_two_dimension_array(class_file_t *clazz, int count1, int count2)
     }
     object_t *arr_obj = malloc(sizeof(object_t));
     arr_obj->ptr = malloc(sizeof(variable_t) * 3);
-    arr_obj->ptr[0].type = ARRAY_PTR;
+    arr_obj->ptr[0].type = MULTARRAY_PTR;
     arr_obj->ptr[0].value.ptr_value = arr;
     arr_obj->ptr[1].type = INT;
     arr_obj->ptr[1].value.int_value = count1;
@@ -54,6 +59,7 @@ void **create_two_dimension_array(class_file_t *clazz, int count1, int count2)
     arr_obj->ptr[2].value.int_value = count2;
     arr_obj->type = clazz;
     object_heap.objects[object_heap.length++] = arr_obj;
+    arr_obj->field_count = 3;
 
     return (void **)arr;
 }
@@ -64,10 +70,11 @@ char *create_string(class_file_t *clazz, char *src)
     strcpy(dest, src);
     object_t *str_obj = malloc(sizeof(object_t));
     str_obj->ptr = malloc(sizeof(variable_t));
-    str_obj->ptr->type = PTR;
+    str_obj->ptr->type = STR_PTR;
     str_obj->ptr->value.ptr_value = dest;
     str_obj->type = clazz;
     object_heap.objects[object_heap.length++] = str_obj;
+    str_obj->field_count = 1;
 
     return dest;
 }
@@ -122,16 +129,19 @@ void free_object_heap()
 {
     for (int i = 0; i < object_heap.length; ++i) {
         if (object_heap.objects[i]->ptr) {
-            if (object_heap.objects[i]->ptr->type == PTR) {
+            if (object_heap.objects[i]->ptr->type == STR_PTR) {
                 free(object_heap.objects[i]->ptr->value.ptr_value);
             }
             else if (object_heap.objects[i]->ptr->type == ARRAY_PTR) {
+                free(object_heap.objects[i]->ptr->value.ptr_value);
+            }
+            else if (object_heap.objects[i]->ptr->type == MULTARRAY_PTR) {
                 int count = object_heap.objects[i]->ptr[1].value.int_value;
+                int **addr = object_heap.objects[i]->ptr[0].value.ptr_value;
                 for (int j = 0; j < count; ++j) {
-                    int **addr = object_heap.objects[i]->ptr[0].value.ptr_value;
                     free(addr[j]);
                 }
-                free(object_heap.objects[i]->ptr[0].value.ptr_value);
+                free(addr);
             }
         }
         free(object_heap.objects[i]->ptr);

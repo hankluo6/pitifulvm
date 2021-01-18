@@ -17,7 +17,6 @@ void add_class(class_file_t *clazz, char *path, char *name)
     meta_class->name = malloc(sizeof(char) * (strlen(name) + 1 - 6));
     strncpy(meta_class->name, name, strlen(name) - 6);
     meta_class->name[strlen(name) - 6] = '\0';
-
     class_heap.class_info[class_heap.length++] = meta_class;
 }
 
