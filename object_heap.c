@@ -2,11 +2,12 @@
 
 void init_object_heap()
 {
-    /* max contain 500 object */
+    /* max contain 5000 object */
     object_heap.objects = malloc(sizeof(object_t*) * 5000);
     object_heap.length = 0;
 }
 
+/* create java object */
 object_t* create_object(class_file_t *clazz)
 {
     size_t size = clazz->fields_count * sizeof(variable_t);
@@ -20,7 +21,7 @@ object_t* create_object(class_file_t *clazz)
         new_obj->ptr = malloc(size);
         memset(&new_obj->ptr->value, 0, size);
         for (int i = 0; i < clazz->fields_count; ++i) {
-            new_obj->ptr[i].type = NONE;
+            new_obj->ptr[i].type = VAR_NONE;
         }
     }
     new_obj->type = clazz;
@@ -28,13 +29,15 @@ object_t* create_object(class_file_t *clazz)
     return new_obj;
 }
 
+/* create array object, place it address in object heap */
 void *create_array(class_file_t *clazz, int count)
 {
     void *arr = malloc(count * sizeof(int));
     object_t *arr_obj = malloc(sizeof(object_t));
     arr_obj->ptr = malloc(sizeof(variable_t));
-    arr_obj->ptr->type = ARRAY_PTR;
+    arr_obj->ptr->type = VAR_ARRAY_PTR;
     arr_obj->ptr->value.ptr_value = arr;
+    /* this type attribute is useless */
     arr_obj->type = clazz;
     object_heap.objects[object_heap.length++] = arr_obj;
     arr_obj->field_count = 1;
@@ -42,21 +45,29 @@ void *create_array(class_file_t *clazz, int count)
     return arr;
 }
 
-/* only support integer */
+/**
+ * create two dimension array, place it address in object heap 
+ * note that:
+ *      field 0 store array address,
+ *      field 1 store first dimension size
+ *      field 2 store second dimension size
+ */
 void **create_two_dimension_array(class_file_t *clazz, int count1, int count2)
 {
+    /* only support integer array */
     int **arr = malloc(count1 * sizeof(int *));
     for (int i = 0; i < count1; ++i) {
         arr[i] = malloc(count2 * sizeof(int));
     }
     object_t *arr_obj = malloc(sizeof(object_t));
     arr_obj->ptr = malloc(sizeof(variable_t) * 3);
-    arr_obj->ptr[0].type = MULTARRAY_PTR;
+    arr_obj->ptr[0].type = VAR_MULTARRAY_PTR;
     arr_obj->ptr[0].value.ptr_value = arr;
-    arr_obj->ptr[1].type = INT;
+    arr_obj->ptr[1].type = VAR_INT;
     arr_obj->ptr[1].value.int_value = count1;
-    arr_obj->ptr[2].type = INT;
+    arr_obj->ptr[2].type = VAR_INT;
     arr_obj->ptr[2].value.int_value = count2;
+    /* this type attribute is useless */
     arr_obj->type = clazz;
     object_heap.objects[object_heap.length++] = arr_obj;
     arr_obj->field_count = 3;
@@ -64,13 +75,17 @@ void **create_two_dimension_array(class_file_t *clazz, int count1, int count2)
     return (void **)arr;
 }
 
+/**
+ *  create string object and put it in object heap 
+ *  clazz must be java/lang/String
+ */
 char *create_string(class_file_t *clazz, char *src)
 {
     char *dest = malloc((strlen(src) + 1) * sizeof(char));
     strcpy(dest, src);
     object_t *str_obj = malloc(sizeof(object_t));
     str_obj->ptr = malloc(sizeof(variable_t));
-    str_obj->ptr->type = STR_PTR;
+    str_obj->ptr->type = VAR_STR_PTR;
     str_obj->ptr->value.ptr_value = dest;
     str_obj->type = clazz;
     object_heap.objects[object_heap.length++] = str_obj;
@@ -129,13 +144,13 @@ void free_object_heap()
 {
     for (int i = 0; i < object_heap.length; ++i) {
         if (object_heap.objects[i]->ptr) {
-            if (object_heap.objects[i]->ptr->type == STR_PTR) {
+            if (object_heap.objects[i]->ptr->type == VAR_STR_PTR) {
                 free(object_heap.objects[i]->ptr->value.ptr_value);
             }
-            else if (object_heap.objects[i]->ptr->type == ARRAY_PTR) {
+            else if (object_heap.objects[i]->ptr->type == VAR_ARRAY_PTR) {
                 free(object_heap.objects[i]->ptr->value.ptr_value);
             }
-            else if (object_heap.objects[i]->ptr->type == MULTARRAY_PTR) {
+            else if (object_heap.objects[i]->ptr->type == VAR_MULTARRAY_PTR) {
                 int count = object_heap.objects[i]->ptr[1].value.int_value;
                 int **addr = object_heap.objects[i]->ptr[0].value.ptr_value;
                 for (int j = 0; j < count; ++j) {

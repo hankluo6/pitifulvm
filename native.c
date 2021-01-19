@@ -8,17 +8,17 @@ void void_native_method(method_t *method, local_variable_t *locals, class_file_t
             printf("\n");
         }
         else if (strcmp(method->descriptor, "(I)V") == 0) {
-            int32_t value = stack_to_int(locals[1].entry.val, sizeof(int32_t));
+            int32_t value = stack_to_int(&locals[1].entry, sizeof(int32_t));
             printf("%d\n", value);
         }
         else if (strcmp(method->descriptor, "(Ljava/lang/String;)V") == 0) {
-            void *addr = locals[1].entry.ptr;
+            void *addr = locals[1].entry.ptr_value;
             printf("%s\n", (char *)addr);
         }
     }
     else if (strcmp(method->name, "print") == 0) {
         if (strcmp(method->descriptor, "(Ljava/lang/String;)V") == 0) {
-            void *addr = locals[1].entry.ptr;
+            void *addr = locals[1].entry.ptr_value;
             printf("%s", (char *)addr);
         }
     }
@@ -33,13 +33,14 @@ void *ptr_native_method(method_t *method, local_variable_t *locals, class_file_t
     if (strcmp(method->name, "readLine") == 0) {
         if (strcmp(method->descriptor, "()Ljava/lang/String;") == 0) {
             char *str = malloc(sizeof(char) * 50);
-            scanf("%s", str);
+            int ret = scanf("%50s", str);
+            assert(ret > 0 && "scanf error");
             return str;
         }
     }
     else if (strcmp(method->name, "parseLong") == 0) {
         if (strcmp(method->descriptor, "(Ljava/lang/String;)J") == 0) {
-            void *addr = locals[1].entry.ptr;
+            void *addr = locals[1].entry.ptr_value;
             long *value = malloc(sizeof(long));
             *value = atoll((char *)addr);
             return value;
@@ -58,17 +59,17 @@ void *ptr_native_method(method_t *method, local_variable_t *locals, class_file_t
     }
     else if (strcmp(method->name, "charAt") == 0) {
         if (strcmp(method->descriptor, "(I)C") == 0) {
-            char *str = locals[0].entry.ptr;
+            char *str = locals[0].entry.ptr_value;
             char *c = malloc(sizeof(char));
-            int32_t index = stack_to_int(locals[1].entry.val, sizeof(int32_t));
+            int32_t index = stack_to_int(&locals[1].entry, sizeof(int32_t));
             *c = str[index];
             return c;
         }
     }
     else if (strcmp(method->name, "compareTo") == 0) {
         if (strcmp(method->descriptor, "(Ljava/lang/String;)I") == 0) {
-            char *str = locals[0].entry.ptr;
-            char *str2 = locals[1].entry.ptr;
+            char *str = locals[0].entry.ptr_value;
+            char *str2 = locals[1].entry.ptr_value;
 
             size_t l1 = strlen(str), l2 = strlen(str2);
             int idx = 0;
