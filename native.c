@@ -1,6 +1,6 @@
 #include "native.h"
 
-/* not check class type */
+/* not check class type yet */
 void void_native_method(method_t *method, local_variable_t *locals, class_file_t *clazz)
 {
     if (strcmp(method->name, "println") == 0) {

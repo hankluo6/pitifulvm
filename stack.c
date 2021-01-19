@@ -79,7 +79,7 @@ int64_t stack_to_int(unsigned char *entry, size_t size)
         return value;
     }
     default:
-        assert(0 && "stack entry not an interger");
+        assert(0 && "stack entry error");
         return -1;
     }
 }

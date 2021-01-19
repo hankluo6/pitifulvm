@@ -51,7 +51,6 @@ void load_native_class(char *name)
             assert(class_file && "Failed to open file");
 
             /* parse the class file */
-            /* change to heap */
             class_file_t *clazz = malloc(sizeof(class_file_t));
             *clazz = get_class(class_file);
             
