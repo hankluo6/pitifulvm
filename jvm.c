@@ -16,77 +16,6 @@
 /* TODO: add -cp arg to achieve class path select */
 char *prefix;
 
-static inline void bipush(stack_frame_t *op_stack,
-                          uint32_t pc,
-                          uint8_t *code_buf)
-{
-    int8_t param = code_buf[pc + 1];
-
-    push_byte(op_stack, param);
-}
-
-static inline void sipush(stack_frame_t *op_stack,
-                          uint32_t pc,
-                          uint8_t *code_buf)
-{
-    uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
-    int16_t res = ((param1 << 8) | param2);
-
-    push_short(op_stack, res);
-}
-
-static inline void iadd(stack_frame_t *op_stack)
-{
-    int32_t op1 = pop_int(op_stack);
-    int32_t op2 = pop_int(op_stack);
-
-    push_int(op_stack, op1 + op2);
-}
-
-static inline void isub(stack_frame_t *op_stack)
-{
-    int32_t op1 = pop_int(op_stack);
-    int32_t op2 = pop_int(op_stack);
-
-    push_int(op_stack, op2 - op1);
-}
-
-static inline void imul(stack_frame_t *op_stack)
-{
-    int32_t op1 = pop_int(op_stack);
-    int32_t op2 = pop_int(op_stack);
-
-    push_int(op_stack, op1 * op2);
-}
-
-static inline void idiv(stack_frame_t *op_stack)
-{
-    int32_t op1 = pop_int(op_stack);
-    int32_t op2 = pop_int(op_stack);
-
-    push_int(op_stack, op2 / op1);
-}
-
-static inline void irem(stack_frame_t *op_stack)
-{
-    int32_t op1 = pop_int(op_stack);
-    int32_t op2 = pop_int(op_stack);
-
-    push_int(op_stack, op2 % op1);
-}
-
-static inline void ineg(stack_frame_t *op_stack)
-{
-    int32_t op1 = pop_int(op_stack);
-    
-    push_int(op_stack, -op1);
-}
-
-static inline void iconst(stack_frame_t *op_stack, uint8_t current)
-{
-    push_int(op_stack, current - i_iconst_0);
-}
-
 /**
  * Execute the opcode instructions of a method until it returns.
  *
@@ -94,10 +23,10 @@ static inline void iconst(stack_frame_t *op_stack, uint8_t current)
  * @param locals the array of local variables, including the method parameters.
  *               Except for parameters, the locals are uninitialized.
  * @param clazz the class file the method belongs to
- * @return if the method returns an int, a heap-allocated pointer to it;
- *         NULL if the method returns void, NULL;
+ * @return the method return variable, a heap-allocated pointer, should be free from caller;
+ * 
  */
-variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz)
+stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t *clazz)
 {
     code_t code = method->code;
     stack_frame_t *op_stack = malloc(sizeof(stack_frame_t));
@@ -118,40 +47,48 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         switch (current) {
         /* Return int from method */
         case i_ireturn: {
-            variable_t *ret = malloc(sizeof(variable_t));
-            ret->value.int_value = pop_int(op_stack);
+            stack_entry_t *ret = malloc(sizeof(variable_t));
+            ret->entry.int_value = (int32_t)pop_int(op_stack);
             ret->type = STACK_ENTRY_INT;
+
             free(op_stack->store);
             free(op_stack);
+
             return ret;
         } break;
 
         /* Return void from method */
         case i_return: {
-            variable_t *ret = malloc(sizeof(variable_t));
+            stack_entry_t *ret = malloc(sizeof(variable_t));
             ret->type = STACK_ENTRY_NONE;
+            
             free(op_stack->store);
             free(op_stack);
+            
             return ret;
         } break;
 
         /* Return long from method */
         case i_lreturn: {
-            variable_t *ret = malloc(sizeof(variable_t));
-            ret->value.long_value = pop_int(op_stack);
+            stack_entry_t *ret = malloc(sizeof(variable_t));
+            ret->entry.long_value = pop_int(op_stack);
             ret->type = STACK_ENTRY_LONG;
+
             free(op_stack->store);
             free(op_stack);
+            
             return ret;
         } break;
 
         /* Return reference from method */
         case i_areturn: {
-            variable_t *ret = malloc(sizeof(variable_t));
-            ret->value.ptr_value = pop_ref(op_stack);
+            stack_entry_t *ret = malloc(sizeof(variable_t));
+            ret->entry.ptr_value = pop_ref(op_stack);
             ret->type = STACK_ENTRY_REF;
+
             free(op_stack->store);
             free(op_stack);
+            
             return ret;
         } break;
 
@@ -186,9 +123,10 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             method_t *own_method = find_method(method_name, method_descriptor, target_class);
             uint16_t num_params = get_number_of_parameters(own_method);
             if (own_method->access_flag & ACC_NATIVE) {
-                /* FIXME: only support max 20 stack */
+                /* FIXME: locals size must be determined */
                 local_variable_t own_locals[20];
                 memset(own_locals, 0, sizeof(own_locals));
+
                 for (int i = num_params; i >= 1; i--) {
                     pop_to_local(op_stack, &own_locals[i]);
                 }
@@ -203,6 +141,20 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                         push_long(op_stack, *(int64_t *)exec_res);
                     }
                     free(exec_res);
+                /* method return int */
+                } else if (method_descriptor[strlen(method_descriptor) - 1] == 'I') {
+                    void *exec_res = ptr_native_method(own_method, own_locals, target_class);
+                    if (exec_res) {
+                        push_int(op_stack, *(int32_t *)exec_res);
+                    }
+                    free(exec_res);
+                /* method return char */
+                } else if (method_descriptor[strlen(method_descriptor) - 1] == 'C') {
+                    void *exec_res = ptr_native_method(own_method, own_locals, target_class);
+                    if (exec_res) {
+                        push_byte(op_stack, *(int8_t *)exec_res);
+                    }
+                    free(exec_res);
                 /* method return string */
                 } else {
                     void *exec_res = ptr_native_method(own_method, own_locals, target_class);
@@ -215,25 +167,24 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 for (int i = num_params - 1; i >= 0; i--) {
                     pop_to_local(op_stack, &own_locals[i]);
                 }
-                variable_t *exec_res = execute(own_method, own_locals, target_class);
+                stack_entry_t *exec_res = execute(own_method, own_locals, target_class);
                 switch (exec_res->type)
                 {
                 case STACK_ENTRY_INT: {
-                    push_int(op_stack, exec_res->value.int_value);
+                    push_int(op_stack, exec_res->entry.int_value);
                 } break;
                 case STACK_ENTRY_LONG: {
-                    push_long(op_stack, exec_res->value.long_value);
+                    push_long(op_stack, exec_res->entry.long_value);
                 } break;
                 case STACK_ENTRY_REF: {
-                    push_ref(op_stack, exec_res->value.ptr_value);
+                    push_ref(op_stack, exec_res->entry.ptr_value);
                 } break;
                 case STACK_ENTRY_NONE: {
-
+                    /* nothing */
                 } break;
                 default: {
                     assert(0 && "unknown return type");
                 }
-
                 }
                 free(exec_res);
             }
@@ -409,10 +360,6 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         /* Push item from run-time constant pool */
         case i_ldc: {
             constant_pool_t constant_pool = clazz->constant_pool;
-
-            /* find the parameter which will be the index from which we retrieve
-             * constant in the constant pool.
-             */
             int16_t param = code_buf[pc + 1];
 
             /* get the constant */
@@ -430,10 +377,9 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 break;
             }
             default:
-                assert(0 && "ldc only support int and string");
-                break;
+                fprintf(stderr, "ldc only support int and string, but get tag %d\n", info->tag);
+                exit(1);
             }
-            
             pc += 2;
         } break;
 
@@ -457,6 +403,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             int32_t param = current - i_iload_0;
             int32_t loaded;
 
+            //memcpy(&loaded, locals[param].entry.val, sizeof(int32_t));
             loaded = locals[param].entry.int_value;
             push_int(op_stack, loaded);
             pc += 1;
@@ -467,7 +414,8 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             int32_t param = code_buf[pc + 1];
             int64_t loaded;
             
-            memcpy(&loaded, locals[param].entry.val, sizeof(int64_t));
+            //memcpy(&loaded, locals[param].entry.val, sizeof(int64_t));
+            loaded = locals[param].entry.long_value;
             push_long(op_stack, loaded);
 
             pc += 2;
@@ -481,8 +429,10 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             int64_t param = current - i_lload_0;
             int64_t loaded;
 
-            memcpy(&loaded, locals[param].entry.val, sizeof(uint64_t));
+            //memcpy(&loaded, locals[param].entry.val, sizeof(uint64_t));
+            loaded = locals[param].entry.long_value;
             push_long(op_stack, loaded);
+
             pc += 1;
         } break;
 
@@ -490,7 +440,8 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_iload: {
             int32_t param = code_buf[pc + 1];
             int32_t loaded;
-
+            
+            //memcpy(&loaded, locals[param].entry.val, sizeof(int32_t));
             loaded = locals[param].entry.int_value;
             push_int(op_stack, loaded);
 
@@ -501,8 +452,10 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_istore: {
             int32_t param = code_buf[pc + 1];
             int32_t stored = pop_int(op_stack);
-            memcpy(locals[param].entry.val, &stored, sizeof(int32_t));
+            //memcpy(locals[param].entry.val, &stored, sizeof(int32_t));
+            locals[param].entry.int_value = stored;
             locals[param].type = STACK_ENTRY_INT;
+
             pc += 2;
         } break;
 
@@ -513,8 +466,10 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_istore_3: {
             int32_t param = current - i_istore_0;
             int32_t stored = pop_int(op_stack);
+            //memcpy(locals[param].entry.val, &stored, sizeof(int32_t));
             locals[param].entry.int_value = stored;
             locals[param].type = STACK_ENTRY_INT;
+
             pc += 1;
         } break;
 
@@ -522,8 +477,10 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_lstore: {
             int32_t param = code_buf[pc + 1];
             int64_t stored = pop_int(op_stack);
-            memcpy(locals[param].entry.val, &stored, sizeof(int64_t));
+            //memcpy(locals[param].entry.val, &stored, sizeof(int64_t));
+            locals[param].entry.long_value = stored;
             locals[param].type = STACK_ENTRY_LONG;
+
             pc += 2;
         } break;
 
@@ -534,8 +491,10 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_lstore_3: {
             int32_t param = current - i_lstore_0;
             int64_t stored = pop_int(op_stack);
-            memcpy(locals[param].entry.val, &stored, sizeof(int64_t));
+            //memcpy(locals[param].entry.val, &stored, sizeof(int64_t));
+            locals[param].entry.long_value = stored;
             locals[param].type = STACK_ENTRY_LONG;
+
             pc += 1;
         } break;
 
@@ -543,7 +502,12 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_iinc: {
             uint8_t i = code_buf[pc + 1];
             int8_t b = code_buf[pc + 2]; /* signed value */
+            int32_t value;
+            //memcpy(&value, locals[i].entry.val, sizeof(int32_t));
             locals[i].entry.int_value += b;
+            //value += b;
+            //memcpy(locals[i].entry.val, &value, sizeof(int32_t));
+            //locals[i].entry.int_value = value;
             pc += 3;
         } break;
 
@@ -551,56 +515,76 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_i2l: {
             int32_t stored = pop_int(op_stack);
             push_long(op_stack, (int64_t) stored);
+
             pc += 1;
         } break;
 
         /* Convert int to char */
         case i_i2c: {
-            int64_t stored = pop_int(op_stack);
-            push_byte(op_stack, (uint8_t) stored);
+            int32_t stored = pop_int(op_stack);
+            push_byte(op_stack, (int8_t) stored);
+
             pc += 1;
         } break;
 
-
         /* Push byte */
         case i_bipush: {
-            bipush(op_stack, pc, code_buf);
+            int8_t param = code_buf[pc + 1];
+            push_byte(op_stack, param);
+
             pc += 2;
         } break;
 
         /* Add int */
         case i_iadd: {
-            iadd(op_stack);
+            int32_t op1 = pop_int(op_stack);
+            int32_t op2 = pop_int(op_stack);
+            push_int(op_stack, op1 + op2);
+
             pc += 1;
         } break;
 
         /* Subtract int */
         case i_isub: {
-            isub(op_stack);
+            int32_t op1 = pop_int(op_stack);
+            int32_t op2 = pop_int(op_stack);
+            push_int(op_stack, op2 - op1);
+
             pc += 1;
         } break;
 
         /* Multiply int */
         case i_imul: {
-            imul(op_stack);
+            int32_t op1 = pop_int(op_stack);
+            int32_t op2 = pop_int(op_stack);
+            push_int(op_stack, op1 * op2);
+
             pc += 1;
         } break;
 
         /* Divide int */
         case i_idiv: {
-            idiv(op_stack);
+            int32_t op1 = pop_int(op_stack);
+            int32_t op2 = pop_int(op_stack);
+            push_int(op_stack, op2 / op1);
+
             pc += 1;
         } break;
 
         /* Remainder int */
         case i_irem: {
-            irem(op_stack);
+            int32_t op1 = pop_int(op_stack);
+            int32_t op2 = pop_int(op_stack);
+            push_int(op_stack, op2 % op1);
+
             pc += 1;
         } break;
 
         /* Negate int */
         case i_ineg: {
-            ineg(op_stack);
+            int32_t op1 = pop_int(op_stack);
+            push_int(op_stack, -op1);
+
             pc += 1;
         } break;
 
@@ -643,7 +627,9 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         /* Load reference from array */
         case i_aaload: {
             int32_t index = pop_int(op_stack);
+            /* currently only support two dimension integer array */
             int32_t **addr = pop_ref(op_stack);
+
             push_ref(op_stack, addr[index]);
             pc += 1;
         } break;
@@ -716,7 +702,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 method_t *method = find_method("<clinit>", "()V", new_clazz);
                 if (method) {
                     local_variable_t own_locals[method->code.max_locals];
-                    variable_t *exec_res = execute(method, own_locals, new_clazz);
+                    stack_entry_t *exec_res = execute(method, own_locals, new_clazz);
                     assert(exec_res->type == STACK_ENTRY_NONE && "<clinit> must be no return");
                     free(exec_res);
                 }
@@ -779,9 +765,12 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                     /* one array dimension */
                     push_ref(op_stack, field->value->value.ptr_value);
                 }
-                if (field_descriptor[1] == '[') {
+                else if (field_descriptor[1] == '[') {
                     /* two array dimension */
                     push_ref(op_stack, field->value->value.ptr_value);
+                }
+                else {
+                    assert(0 && "only support two dimension array");
                 }
                 break;
             }
@@ -833,7 +822,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 method_t *method = find_method("<clinit>", "()V", target_class);
                 if (method) {
                     local_variable_t own_locals[method->code.max_locals];
-                    variable_t *exec_res = execute(method, own_locals, target_class);
+                    stack_entry_t *exec_res = execute(method, own_locals, target_class);
                     assert(exec_res->type == STACK_ENTRY_NONE && "<clinit> must be no return");
                     free(exec_res);
                 }
@@ -862,12 +851,12 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             case 'B': 
                 /* signed byte */
                 field->value->value.char_value = pop_int(op_stack);
-                field->value->type = BYTE;
+                field->value->type = VAR_BYTE;
                 break;
             case 'C': 
                 /* Unicode character code point in the Basic Multilingual Plane, encoded with UTF-16 */
                 field->value->value.char_value = pop_int(op_stack);
-                field->value->type = BYTE;
+                field->value->type = VAR_BYTE;
                 break;
             case 'D':
                 /* double-precision floating-point value */
@@ -878,7 +867,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             case 'I': 
                 /* integer */
                 field->value->value.int_value = pop_int(op_stack);
-                field->value->type = INT;
+                field->value->type = VAR_INT;
                 break;
             case 'J':
                 /* long integer */
@@ -886,34 +875,37 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             case 'S':
                 /* signed short */
                 field->value->value.short_value = pop_int(op_stack);
-                field->value->type = SHORT;
+                field->value->type = VAR_SHORT;
                 break;
             case 'Z':
                 /* true or false */
                 field->value->value.char_value = pop_int(op_stack);
-                field->value->type = BYTE;
+                field->value->type = VAR_BYTE;
                 break;
             case 'L':
                 /* an instance of class ClassName */
                 if (strcmp(field_descriptor, "Ljava/lang/String;") == 0) {
                     field->value->value.ptr_value = pop_ref(op_stack);
-                    field->value->type = STR_PTR;
+                    field->value->type = VAR_STR_PTR;
                 }
                 else {
                     field->value->value.ptr_value = pop_ref(op_stack);
-                    field->value->type = PTR;
+                    field->value->type = VAR_PTR;
                 }
                 break;
             case '[': {
                 if (field_descriptor[1] != '[') {
                     /* one array dimension */
                     field->value->value.ptr_value = pop_ref(op_stack);
-                    field->value->type = ARRAY_PTR;
+                    field->value->type = VAR_ARRAY_PTR;
                 }
-                if (field_descriptor[1] == '[') {
+                else if (field_descriptor[1] == '[') {
                     /* two array dimension */
                     field->value->value.ptr_value = pop_ref(op_stack);
-                    field->value->type = MULTARRAY_PTR;
+                    field->value->type = VAR_MULTARRAY_PTR;
+                }
+                else {
+                    assert(0 && "only support tow dimension array");
                 }
                 break;
             }
@@ -999,15 +991,16 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_iconst_3:
         case i_iconst_4:
         case i_iconst_5: {
-            iconst(op_stack, current);
+            push_int(op_stack, current - i_iconst_0);
             pc += 1;
         } break;
 
         /* Load reference from local variable */
         case i_aload: {
             int32_t param = code_buf[pc + 1];
-            object_t *obj = locals[param].entry.ptr;
+            object_t *obj = locals[param].entry.ptr_value;
             push_ref(op_stack, obj);
+
             pc += 2;
         } break;
 
@@ -1019,14 +1012,16 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             int32_t param = current - i_aload_0;
             object_t *obj = locals[param].entry.ptr_value;
             push_ref(op_stack, obj);
+
             pc += 1;
         } break;
         
         /* Store reference into local variable */
         case i_astore: {
             int32_t param = code_buf[pc + 1];
-            locals[param].entry.ptr = pop_ref(op_stack);
+            locals[param].entry.ptr_value = pop_ref(op_stack);
             locals[param].type = STACK_ENTRY_REF;
+
             pc += 2;
         } break;
 
@@ -1036,14 +1031,18 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
         case i_astore_2:
         case i_astore_3: {
             int32_t param = current - i_astore_0;
-            locals[param].entry.ptr = pop_ref(op_stack);
+            locals[param].entry.ptr_value = pop_ref(op_stack);
             locals[param].type = STACK_ENTRY_REF;
+
             pc += 1;
         } break;
 
         /* Push short */
         case i_sipush: {
-            sipush(op_stack, pc, code_buf);
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            int16_t res = ((param1 << 8) | param2);
+            push_short(op_stack, res);
+
             pc += 3;
         } break;
 
@@ -1070,7 +1069,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 push_ref(op_stack, addr->value.ptr_value);
             } break;
             default:
-                assert(0 && "Only support integer and long field");
+                assert(0 && "Only support integer, long and reference field");
                 break;
             }
             pc += 3;
@@ -1100,7 +1099,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 break;
             }
             default: {
-                printf("unknown print type (%d)\n", element.type);
+                assert(0 && "only support integer and reference field");
                 break;
             }
             }
@@ -1115,23 +1114,23 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             case 'I': {
                 variable_t *var = find_field_addr(obj, field_name);
                 var->value.int_value = (int32_t)value;
-                var->type = INT;
+                var->type = VAR_INT;
             } break;
             case 'J': {
                 variable_t *var = find_field_addr(obj, field_name);
                 var->value.long_value = value;
-                var->type = LONG;
+                var->type = VAR_LONG;
             } break;
             case 'L': {
                 if (strcmp(field_descriptor, "Ljava/lang/String;") == 0) {
                     variable_t *var = find_field_addr(obj, field_name);
                     var->value.ptr_value = addr;
-                    var->type = STR_PTR;
+                    var->type = VAR_STR_PTR;
                 }
                 else {
                     variable_t *var = find_field_addr(obj, field_name);
                     var->value.ptr_value = addr;
-                    var->type = PTR;
+                    var->type = VAR_PTR;
                 }
             } break;
             default:
@@ -1178,7 +1177,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 method_t *method = find_method("<clinit>", "()V", new_class);
                 if (method) {
                     local_variable_t own_locals[method->code.max_locals];
-                    variable_t *exec_res = execute(method, own_locals, new_class);
+                    stack_entry_t *exec_res = execute(method, own_locals, new_class);
                     assert(exec_res->type == STACK_ENTRY_NONE && "<clinit> must be no return");
                     free(exec_res);
                 }
@@ -1336,7 +1335,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 method_t *method = find_method("<clinit>", "()V", target_class);
                 if (method) {
                     local_variable_t own_locals[method->code.max_locals];
-                    variable_t *exec_res = execute(method, own_locals, target_class);
+                    stack_entry_t *exec_res = execute(method, own_locals, target_class);
                     assert(exec_res->type == STACK_ENTRY_NONE && "<clinit> must be no return");
                     free(exec_res);
                 }
@@ -1357,7 +1356,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             own_locals[0].entry.ptr_value = obj;
             own_locals[0].type = STACK_ENTRY_REF;
 
-            variable_t *exec_res = execute(constructor, own_locals, target_class);
+            stack_entry_t *exec_res = execute(constructor, own_locals, target_class);
             assert(exec_res->type == STACK_ENTRY_NONE && "constructor must be no return");
             free(exec_res);
             
@@ -1404,7 +1403,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 method_t *method = find_method("<clinit>", "()V", target_class);
                 if (method) {
                     local_variable_t own_locals[method->code.max_locals];
-                    variable_t *exec_res = execute(method, own_locals, target_class);
+                    stack_entry_t *exec_res = execute(method, own_locals, target_class);
                     assert(exec_res->type == STACK_ENTRY_NONE && "<clinit> must be no return");
                     free(exec_res);
                 }
@@ -1425,7 +1424,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 object_t *obj = pop_ref(op_stack);
 
                 /* first argument is this pointer */
-                own_locals[0].entry.ptr = obj;
+                own_locals[0].entry.ptr_value = obj;
                 own_locals[0].type = STACK_ENTRY_REF;
 
                 /* method return void */
@@ -1460,20 +1459,20 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
                 object_t *obj = pop_ref(op_stack);
 
                 /* first argument is this pointer */
-                own_locals[0].entry.ptr = obj;
+                own_locals[0].entry.ptr_value = obj;
                 own_locals[0].type = STACK_ENTRY_REF;
 
-                variable_t *exec_res = execute(method, own_locals, target_class);
+                stack_entry_t *exec_res = execute(method, own_locals, target_class);
                 switch (exec_res->type)
                 {
                 case STACK_ENTRY_INT: {
-                    push_int(op_stack, exec_res->value.int_value);
+                    push_int(op_stack, exec_res->entry.int_value);
                 } break;
                 case STACK_ENTRY_LONG: {
-                    push_long(op_stack, exec_res->value.long_value);
+                    push_long(op_stack, exec_res->entry.long_value);
                 } break;
                 case STACK_ENTRY_REF: {
-                    push_ref(op_stack, exec_res->value.ptr_value);
+                    push_ref(op_stack, exec_res->entry.ptr_value);
                 } break;
                 case STACK_ENTRY_NONE: {
 
@@ -1524,6 +1523,7 @@ variable_t *execute(method_t *method, local_variable_t *locals, class_file_t *cl
             case T_BYTE:
             case T_SHORT:
             case T_LONG:
+            default:
                 assert(0 && "only support int array");
                 break;
             }
@@ -1575,7 +1575,7 @@ int main(int argc, char *argv[])
         method_t *method = find_method("<clinit>", "()V", class_heap.class_info[i]->clazz);
         if (method) {
             local_variable_t own_locals[method->code.max_locals];
-            variable_t *exec_res = execute(method, own_locals, class_heap.class_info[i]->clazz);
+            stack_entry_t *exec_res = execute(method, own_locals, class_heap.class_info[i]->clazz);
             assert(exec_res->type == STACK_ENTRY_NONE && "<clinit> must be no return");
             free(exec_res);
         }
@@ -1604,7 +1604,7 @@ int main(int argc, char *argv[])
     method_t *method = find_method("<clinit>", "()V", clazz);
     if (method) {
         local_variable_t own_locals[method->code.max_locals];
-        variable_t *exec_res = execute(method, own_locals, clazz);
+        stack_entry_t *exec_res = execute(method, own_locals, clazz);
         assert(exec_res->type == STACK_ENTRY_NONE && "<clinit> must be no return");
         free(exec_res);
     }
@@ -1621,6 +1621,7 @@ int main(int argc, char *argv[])
     local_variable_t locals[main_method->code.max_locals];
     memset(locals, 0, sizeof(locals));
 <<<<<<< HEAD
+<<<<<<< HEAD
     int32_t *result = execute(main_method, locals, clazz);
     assert(!result && "main() should return void");
 
@@ -1628,6 +1629,9 @@ int main(int argc, char *argv[])
 =======
 =======
     variable_t *result = execute(main_method, locals, clazz);
+=======
+    stack_entry_t *result = execute(main_method, locals, clazz);
+>>>>>>> 24ccd06... Clean some useless code
     assert(result->type == STACK_ENTRY_NONE && "main() should return void");
     free(result);
 <<<<<<< HEAD

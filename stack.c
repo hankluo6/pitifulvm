@@ -1,4 +1,7 @@
+#include <stdio.h>
+
 #include "stack.h"
+
 
 void init_stack(stack_frame_t *stack, size_t entry_size)
 {
@@ -33,8 +36,7 @@ void push_int(stack_frame_t *stack, int32_t value)
 
 void push_long(stack_frame_t *stack, int64_t value)
 {
-    unsigned char *tmp = stack->store[stack->size].entry.val;
-    memcpy(tmp, &value, sizeof(int64_t));
+    stack->store[stack->size].entry.long_value = value;
     stack->store[stack->size].type = STACK_ENTRY_LONG;
     stack->size++;
 }
@@ -51,7 +53,8 @@ stack_entry_t top(stack_frame_t *stack)
     return stack->store[stack->size - 1];
 }
 
-int64_t stack_to_int(unsigned char *entry, size_t size)
+/* pop top of stack value and convert to 64 bits integer */
+int64_t stack_to_int(stack_value_t *entry, size_t size)
 {
     switch (size) {
     /* int8_t */
@@ -75,7 +78,7 @@ int64_t stack_to_int(unsigned char *entry, size_t size)
     /* int64_t */
     case 8: {
         int64_t value;
-        memcpy(&value, entry, size);
+        value = entry->long_value;
         return value;
     }
     default:
@@ -87,7 +90,7 @@ int64_t stack_to_int(unsigned char *entry, size_t size)
 int64_t pop_int(stack_frame_t *stack)
 {
     size_t size = get_type_size(stack->store[stack->size - 1].type);
-    int64_t value = stack_to_int(stack->store[stack->size - 1].entry.val, size);
+    int64_t value = stack_to_int(&stack->store[stack->size - 1].entry, size);
     stack->size--;
     return value;
 }
@@ -97,18 +100,20 @@ void *pop_ref(stack_frame_t *stack)
     return stack->store[--stack->size].entry.ptr_value;
 }
 
+/* pop top of stack and push into local variable, note that if it is integer then it will
+   be convert to 64 bits long integer in order to type consistent */
 void pop_to_local(stack_frame_t *stack, local_variable_t *locals)
 {
     stack_entry_type_t type = stack->store[stack->size - 1].type;
-    /* convert to integer */
+    /* convert to long integer */
     if (type >= STACK_ENTRY_BYTE && type <= STACK_ENTRY_LONG) {
         int64_t value = pop_int(stack);
-        memcpy(&locals->entry, &value, sizeof(int64_t));
-        locals->type = type;
+        locals->entry.long_value = value;
+        locals->type = STACK_ENTRY_LONG;
     }
     else if (type == STACK_ENTRY_REF) {
         void *addr = pop_ref(stack);
-        locals->entry.ptr = addr;
+        locals->entry.ptr_value = addr;
         locals->type = type;
     }
     else {
@@ -121,7 +126,6 @@ size_t get_type_size(stack_entry_type_t type)
     size_t size = 0;
     switch (type) {
     case STACK_ENTRY_NONE:
-        /* pass */
         break;
     case STACK_ENTRY_BYTE:
         size = sizeof(int8_t);

@@ -97,6 +97,7 @@ uint16_t get_number_of_parameters(method_t *method)
     return num_param;
 }
 
+
 field_t *find_field(const char *name, const char *desc, class_file_t *clazz)
 {
     field_t *field = clazz->fields;
@@ -464,12 +465,6 @@ method_t *get_methods(FILE *class_file, constant_pool_t *cp)
         assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
         method->descriptor = (char *) descriptor->info;
         method->access_flag = info.access_flags;
-        /* FIXME: this VM can only execute static methods, while every class
-         * has a constructor method <init>
-         */
-        /* if (strcmp(method->name, "<init>"))
-            assert((info.access_flags & IS_STATIC) &&
-                   "Only static methods are supported by this VM."); */
 
         read_method_attributes(class_file, &info, &method->code, cp);
     }
@@ -548,26 +543,3 @@ class_file_t get_class(FILE *class_file)
     clazz.bootstrap = read_bootstrap_attribute(class_file, &clazz.constant_pool);
     return clazz;
 }
-
-#if 0
-/**
- * Frees the memory used by a parsed class file.
- *
- * @param class the parsed class file
- */
-void free_class(class_file_t *clazz)
-{
-    constant_pool_t *cp = &clazz->constant_pool;
-    for (u2 i = 0; i < cp->constant_pool_count; i++)
-        free(cp->constant_pool[i].info);
-    free(cp->constant_pool);
-
-    for (method_t *method = clazz->methods; method->name; method++)
-        free(method->code.code);
-
-
-    free(clazz->interfaces);
-    free(clazz->methods);
-    free(clazz->fields);
-}
-#endif
