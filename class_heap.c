@@ -28,7 +28,6 @@ class_file_t *find_class_from_heap(char *value)
         }
     }
     return NULL;
-    /* assert(0 && "no such a class"); */
 }
 
 /* recursively list all file in directory and add these class in heap */
@@ -52,7 +51,6 @@ void load_native_class(char *name)
             assert(class_file && "Failed to open file");
 
             /* parse the class file */
-            /* change to heap */
             class_file_t *clazz = malloc(sizeof(class_file_t));
             *clazz = get_class(class_file);
             

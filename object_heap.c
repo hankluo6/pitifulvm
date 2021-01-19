@@ -3,7 +3,7 @@
 void init_object_heap()
 {
     /* max contain 500 object */
-    object_heap.objects = malloc(sizeof(object_t*) * 500);
+    object_heap.objects = malloc(sizeof(object_t*) * 5000);
     object_heap.length = 0;
 }
 

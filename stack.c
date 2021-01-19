@@ -11,7 +11,6 @@ void init_stack(stack_frame_t *stack, size_t entry_size)
     stack->size = 0;
 }
 
-
 void push_byte(stack_frame_t *stack, int8_t value)
 {
     unsigned char *tmp = stack->store[stack->size].entry.val;
@@ -85,7 +84,7 @@ int64_t stack_to_int(unsigned char *entry, size_t size)
         return value;
     }
     default:
-        assert(0 && "stack entry not an interger");
+        assert(0 && "stack entry error");
         return -1;
     }
 }
