@@ -171,7 +171,7 @@ typedef struct {
 typedef struct
 {
     class_file_t *clazz;
-    char *path;
+    /* char *path; */
     char *name;
 } meta_class_t;
 
@@ -288,13 +288,12 @@ char *find_class_name_from_index(uint16_t idx, class_file_t *clazz);
 class_header_t get_class_header(FILE *class_file);
 void get_class_info(FILE *class_file, class_file_t *clazz);
 void read_field_attributes(FILE *class_file,
-                            field_info *info,
-                            constant_pool_t *cp);
+                            field_info *info);
 void read_method_attributes(FILE *class_file,
                             method_info *info,
                             code_t *code,
                             constant_pool_t *cp);
-u2 *get_interface(FILE *class_file, constant_pool_t *cp, class_file_t *clazz);
+u2 *get_interface(FILE *class_file, class_file_t *clazz);
 method_t *get_methods(FILE *class_file, constant_pool_t *cp);
 field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz);
 bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file, constant_pool_t *cp);

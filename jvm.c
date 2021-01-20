@@ -100,7 +100,18 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
             /* the method to be called */
             char *method_name, *method_descriptor, *class_name;
             class_name = find_method_info_from_index(index, clazz, &method_name, &method_descriptor);
+            
             class_file_t *target_class = find_class_from_heap(class_name);
+
+            /* if not found, add specify class path. this can be remove by record path infomation in class heap */
+            if (!target_class) {
+                char *tmp = malloc(strlen(class_name) + strlen(prefix) + 1);
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                target_class = find_class_from_heap(tmp);
+
+                free(tmp);
+            }
 
             if (!target_class) {
                 /* 7 = ".class" + 1 */
@@ -116,7 +127,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
                 *target_class = get_class(class_file);
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
-                add_class(target_class, NULL, tmp);
+                add_class(target_class, tmp);
                 free(tmp);
             }
 
@@ -133,31 +144,31 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
 
                 /* method return void */
                 if (method_descriptor[strlen(method_descriptor) - 1] == 'V') {
-                    void_native_method(method, own_locals, target_class);
+                    void_native_method(method, own_locals);
                 /* method return long */
                 } else if (method_descriptor[strlen(method_descriptor) - 1] == 'J') {
-                    void *exec_res = ptr_native_method(own_method, own_locals, target_class);
+                    void *exec_res = ptr_native_method(own_method, own_locals);
                     if (exec_res) {
                         push_long(op_stack, *(int64_t *)exec_res);
                     }
                     free(exec_res);
                 /* method return int */
                 } else if (method_descriptor[strlen(method_descriptor) - 1] == 'I') {
-                    void *exec_res = ptr_native_method(own_method, own_locals, target_class);
+                    void *exec_res = ptr_native_method(own_method, own_locals);
                     if (exec_res) {
                         push_int(op_stack, *(int32_t *)exec_res);
                     }
                     free(exec_res);
                 /* method return char */
                 } else if (method_descriptor[strlen(method_descriptor) - 1] == 'C') {
-                    void *exec_res = ptr_native_method(own_method, own_locals, target_class);
+                    void *exec_res = ptr_native_method(own_method, own_locals);
                     if (exec_res) {
                         push_byte(op_stack, *(int8_t *)exec_res);
                     }
                     free(exec_res);
                 /* method return string */
                 } else {
-                    void *exec_res = ptr_native_method(own_method, own_locals, target_class);
+                    void *exec_res = ptr_native_method(own_method, own_locals);
                     create_string(clazz, (char *)exec_res);
                     free(exec_res);
                 }
@@ -402,8 +413,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_iload_3: {
             int32_t param = current - i_iload_0;
             int32_t loaded;
-
-            //memcpy(&loaded, locals[param].entry.val, sizeof(int32_t));
             loaded = locals[param].entry.int_value;
             push_int(op_stack, loaded);
             pc += 1;
@@ -413,8 +422,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_lload: {
             int32_t param = code_buf[pc + 1];
             int64_t loaded;
-            
-            //memcpy(&loaded, locals[param].entry.val, sizeof(int64_t));
             loaded = locals[param].entry.long_value;
             push_long(op_stack, loaded);
 
@@ -428,8 +435,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_lload_3: {
             int64_t param = current - i_lload_0;
             int64_t loaded;
-
-            //memcpy(&loaded, locals[param].entry.val, sizeof(uint64_t));
             loaded = locals[param].entry.long_value;
             push_long(op_stack, loaded);
 
@@ -440,8 +445,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_iload: {
             int32_t param = code_buf[pc + 1];
             int32_t loaded;
-            
-            //memcpy(&loaded, locals[param].entry.val, sizeof(int32_t));
             loaded = locals[param].entry.int_value;
             push_int(op_stack, loaded);
 
@@ -452,7 +455,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_istore: {
             int32_t param = code_buf[pc + 1];
             int32_t stored = pop_int(op_stack);
-            //memcpy(locals[param].entry.val, &stored, sizeof(int32_t));
             locals[param].entry.int_value = stored;
             locals[param].type = STACK_ENTRY_INT;
 
@@ -466,7 +468,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_istore_3: {
             int32_t param = current - i_istore_0;
             int32_t stored = pop_int(op_stack);
-            //memcpy(locals[param].entry.val, &stored, sizeof(int32_t));
             locals[param].entry.int_value = stored;
             locals[param].type = STACK_ENTRY_INT;
 
@@ -477,7 +478,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_lstore: {
             int32_t param = code_buf[pc + 1];
             int64_t stored = pop_int(op_stack);
-            //memcpy(locals[param].entry.val, &stored, sizeof(int64_t));
             locals[param].entry.long_value = stored;
             locals[param].type = STACK_ENTRY_LONG;
 
@@ -491,7 +491,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_lstore_3: {
             int32_t param = current - i_lstore_0;
             int64_t stored = pop_int(op_stack);
-            //memcpy(locals[param].entry.val, &stored, sizeof(int64_t));
             locals[param].entry.long_value = stored;
             locals[param].type = STACK_ENTRY_LONG;
 
@@ -502,12 +501,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         case i_iinc: {
             uint8_t i = code_buf[pc + 1];
             int8_t b = code_buf[pc + 2]; /* signed value */
-            int32_t value;
-            //memcpy(&value, locals[i].entry.val, sizeof(int32_t));
             locals[i].entry.int_value += b;
-            //value += b;
-            //memcpy(locals[i].entry.val, &value, sizeof(int32_t));
-            //locals[i].entry.int_value = value;
             pc += 3;
         } break;
 
@@ -697,7 +691,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
                 
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
-                add_class(new_clazz, NULL, tmp);
+                add_class(new_clazz, tmp);
 
                 method_t *method = find_method("<clinit>", "()V", new_clazz);
                 if (method) {
@@ -817,7 +811,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
                 
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
-                add_class(target_class, NULL, tmp);
+                add_class(target_class, tmp);
 
                 method_t *method = find_method("<clinit>", "()V", target_class);
                 if (method) {
@@ -1052,11 +1046,26 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
             uint16_t index = ((param1 << 8) | param2);
 
             object_t *obj = pop_ref(op_stack);
-            char *field_name, *field_descriptor, *class_name;
-            class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
+            char *field_name, *field_descriptor;
+            find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
+            
             variable_t *addr = find_field_addr(obj, field_name);
             
-            /* FIXME: if not found, should find field from parent */
+            /* find from super class */
+            while (!addr) {
+                char *super_name = find_class_name_from_index(obj->type->super_class, obj->type);
+                assert(super_name && "cannot find field");
+                class_file_t *target_class = find_class_from_heap(super_name);
+                if (!target_class) {
+                    char *tmp = malloc(strlen(super_name) + strlen(prefix) + 1);
+                    strcpy(tmp, prefix);
+                    strcat(tmp, super_name);
+                    target_class = find_class_from_heap(tmp);
+                    free(tmp);
+                }
+                addr = find_field_addr(obj, field_name);
+            }
+            
             switch (field_descriptor[0])
             {
             case 'I': {
@@ -1104,31 +1113,43 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
             }
             }
             object_t *obj = pop_ref(op_stack);
+            
+            char *field_name, *field_descriptor;
+            find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
 
-            char *field_name, *field_descriptor, *class_name;
-            class_name = find_field_info_from_index(index, clazz, &field_name, &field_descriptor);
+            variable_t *var = find_field_addr(obj, field_name);
 
-            /* FIXME: if not found, should find field from parent */
+            /* find from super class */
+            while (!var) {
+                char *super_name = find_class_name_from_index(obj->type->super_class, obj->type);
+                assert(super_name && "cannot find field");
+                class_file_t *target_class = find_class_from_heap(super_name);
+                if (!target_class) {
+                    char *tmp = malloc(strlen(super_name) + strlen(prefix) + 1);
+                    strcpy(tmp, prefix);
+                    strcat(tmp, super_name);
+                    target_class = find_class_from_heap(tmp);
+                    free(tmp);
+                }
+                addr = find_field_addr(obj, field_name);
+            }
+            
             switch (field_descriptor[0])
             {
             case 'I': {
-                variable_t *var = find_field_addr(obj, field_name);
                 var->value.int_value = (int32_t)value;
                 var->type = VAR_INT;
             } break;
             case 'J': {
-                variable_t *var = find_field_addr(obj, field_name);
                 var->value.long_value = value;
                 var->type = VAR_LONG;
             } break;
             case 'L': {
                 if (strcmp(field_descriptor, "Ljava/lang/String;") == 0) {
-                    variable_t *var = find_field_addr(obj, field_name);
                     var->value.ptr_value = addr;
                     var->type = VAR_STR_PTR;
                 }
                 else {
-                    variable_t *var = find_field_addr(obj, field_name);
                     var->value.ptr_value = addr;
                     var->type = VAR_PTR;
                 }
@@ -1172,7 +1193,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
 
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
-                add_class(new_class, NULL, tmp);
+                add_class(new_class, tmp);
 
                 method_t *method = find_method("<clinit>", "()V", new_class);
                 if (method) {
@@ -1225,13 +1246,13 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
         
             char *arg = NULL;
             /* we only support makeConcatWithConstants (string concatenation), this mean argument must be only one string */
-            /* FIXME: if string contain "\0", it will cause error */
+            /* FIXME: if string contain '\0' character, it will cause error */
             assert(bootstrap_method->num_bootstrap_arguments == 1 && "only support makeConcatWithConstants");
             for (int i = 0; i < bootstrap_method->num_bootstrap_arguments; ++i) {
                 arg = get_string_utf(&clazz->constant_pool, bootstrap_method->bootstrap_arguments[i]);
             }
 
-            /* each \u0001 mean "1" in unicode, this should be replace by actual argument from stack, other are constant characters */
+            /* each \u0001 mean "1" in unicode, this should be replace by actual argument from stack, others are constant characters */
             uint16_t num_params = 0;
             uint16_t num_constant = 0;
             char *tmp = arg;
@@ -1245,8 +1266,6 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
             size_t max_len = 0;
             for (int i = 0; i < num_params; i++) {
                 stack_entry_t element = top(op_stack);
-                int64_t value = 0;
-                void *addr = NULL;
                 switch (element.type)
                 {
                 /* integer */
@@ -1256,8 +1275,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
                 case STACK_ENTRY_LONG: {
                     int64_t value = pop_int(op_stack);
                     char str[50];
-                    //lld?
-                    sprintf(str, "%ld", value);
+                    snprintf(str, 50, "%ld", value);
                     char *dest = create_string(clazz, str);
                     all_string[i] = dest;
                     break;
@@ -1330,7 +1348,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
 
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
-                add_class(target_class, NULL, tmp);
+                add_class(target_class, tmp);
 
                 method_t *method = find_method("<clinit>", "()V", target_class);
                 if (method) {
@@ -1398,7 +1416,7 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
                 
                 int error = fclose(class_file);
                 assert(!error && "Failed to close file");
-                add_class(target_class, NULL, tmp);
+                add_class(target_class, tmp);
 
                 method_t *method = find_method("<clinit>", "()V", target_class);
                 if (method) {
@@ -1429,21 +1447,21 @@ stack_entry_t *execute(method_t *method, local_variable_t *locals, class_file_t 
 
                 /* method return void */
                 if (method_descriptor[strlen(method_descriptor) - 1] == 'V') {
-                    void_native_method(method, own_locals, target_class);
+                    void_native_method(method, own_locals);
                 } else if (method_descriptor[strlen(method_descriptor) - 1] == 'J' ) {
-                    void *exec_res = ptr_native_method(method, own_locals, target_class);
+                    void *exec_res = ptr_native_method(method, own_locals);
                     if (exec_res) {
                         push_long(op_stack, *(int64_t *)exec_res);
                     }
                     free(exec_res);
                 } else if (method_descriptor[strlen(method_descriptor) - 1] == 'C' || method_descriptor[strlen(method_descriptor) - 1] == 'I') {
-                    void *exec_res = ptr_native_method(method, own_locals, target_class);
+                    void *exec_res = ptr_native_method(method, own_locals);
                     if (exec_res) {
                         push_int(op_stack, *(int32_t *)exec_res);
                     }
                     free(exec_res);
                 } else {
-                    void *exec_res = ptr_native_method(method, own_locals, target_class);
+                    void *exec_res = ptr_native_method(method, own_locals);
                     char *new_str = create_string(clazz, (char *)exec_res);
                     push_ref(op_stack, new_str);
                     free(exec_res);
@@ -1583,10 +1601,11 @@ int main(int argc, char *argv[])
 
     char *match = strrchr(argv[1], '/');
     if (match == NULL) {
-        add_class(clazz, NULL, argv[1]);
+        add_class(clazz, argv[1]);
         prefix = malloc(1 * sizeof(char));
         prefix[0] = '\0';
     } else {
+<<<<<<< HEAD
         add_class(clazz, NULL, match + 1);
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1595,6 +1614,9 @@ int main(int argc, char *argv[])
         prefix = malloc((match - argv[1] + 1) * sizeof(char));
 >>>>>>> 0c9995f... Implement native java class to let invokevirtual more resonable
 =======
+=======
+        add_class(clazz, argv[1]);
+>>>>>>> b91d5be... Clean the code
         prefix = malloc((match - argv[1] + 2) * sizeof(char));
 >>>>>>> 8d80d49... Remove memory leak and use heap to record array and temporary string
         strncpy(prefix, argv[1], match - argv[1] + 1);
