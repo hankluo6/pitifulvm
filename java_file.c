@@ -346,8 +346,7 @@ void get_class_info(FILE *class_file, class_file_t *clazz)
 }
 
 void read_field_attributes(FILE *class_file,
-                            field_info *info,
-                            constant_pool_t *cp)
+                            field_info *info)
 {
     for (u2 i = 0; i < info->attributes_count; i++) {
         attribute_info ainfo = {
@@ -399,7 +398,7 @@ void read_method_attributes(FILE *class_file,
 
 #define IS_STATIC 0x0008
 
-u2 *get_interface(FILE *class_file, constant_pool_t *cp, class_file_t *clazz)
+u2 *get_interface(FILE *class_file, class_file_t *clazz)
 {
     u2 interfaces_count = read_u2(class_file);
     clazz->interfaces_count = interfaces_count;
@@ -436,7 +435,7 @@ field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz)
         field->descriptor = (char *) descriptor->info;
         field->value = malloc(sizeof(variable_t));
 
-        read_field_attributes(class_file, &info, cp);
+        read_field_attributes(class_file, &info);
     }
 
     /* Mark end of array with NULL name */
@@ -532,7 +531,7 @@ class_file_t get_class(FILE *class_file)
     get_class_info(class_file, &clazz);
 
     /* Read the list of interface */
-    clazz.interfaces = get_interface(class_file, &clazz.constant_pool, &clazz);
+    clazz.interfaces = get_interface(class_file, &clazz);
 
     /* Read the list of fields */
     clazz.fields = get_fields(class_file, &clazz.constant_pool, &clazz);

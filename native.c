@@ -1,7 +1,7 @@
 #include "native.h"
 
 /* not check class type yet */
-void void_native_method(method_t *method, local_variable_t *locals, class_file_t *clazz)
+void void_native_method(method_t *method, local_variable_t *locals)
 {
     if (strcmp(method->name, "println") == 0) {
         if (strcmp(method->descriptor, "()V") == 0) {
@@ -29,7 +29,7 @@ void void_native_method(method_t *method, local_variable_t *locals, class_file_t
     }
 }
 
-void *ptr_native_method(method_t *method, local_variable_t *locals, class_file_t *clazz) {
+void *ptr_native_method(method_t *method, local_variable_t *locals) {
     if (strcmp(method->name, "readLine") == 0) {
         if (strcmp(method->descriptor, "()Ljava/lang/String;") == 0) {
             char *str = malloc(sizeof(char) * 50);

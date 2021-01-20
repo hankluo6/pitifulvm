@@ -8,12 +8,11 @@ void init_class_heap()
 }
 
 /* the name parameter should contain ".class" suffix and be cut in this function */
-void add_class(class_file_t *clazz, char *path, char *name)
+void add_class(class_file_t *clazz, char *name)
 {
     meta_class_t *meta_class = malloc(sizeof(meta_class_t));
     meta_class->clazz = clazz;
     /* assume class file is in the same directory */
-    meta_class->path = NULL; 
     meta_class->name = malloc(sizeof(char) * (strlen(name) + 1 - 6));
     strncpy(meta_class->name, name, strlen(name) - 6);
     meta_class->name[strlen(name) - 6] = '\0';
@@ -57,7 +56,7 @@ void load_native_class(char *name)
             int error = fclose(class_file);
             assert(!error && "Failed to close file");
 
-            add_class(clazz, NULL, path);
+            add_class(clazz, path);
         }
         else {
             load_native_class(path);
@@ -97,7 +96,6 @@ void free_class_heap()
             free(bootstrap->bootstrap_methods);
             free(bootstrap);
         }
-
         free(class_heap.class_info[i]->clazz);
         free(class_heap.class_info[i]->name);
         free(class_heap.class_info[i]);

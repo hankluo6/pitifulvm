@@ -128,6 +128,7 @@ size_t get_field_size(class_file_t *clazz)
     return size;
 }
 
+
 variable_t *find_field_addr(object_t *obj, char *name)
 {
     field_t *field = obj->type->fields;
@@ -137,7 +138,7 @@ variable_t *find_field_addr(object_t *obj, char *name)
             return &obj->ptr[i];
         }
     }
-    assert(0 && "cannot find field name");
+    return NULL;
 }
 
 void free_object_heap()
