@@ -1,5 +1,5 @@
 CC ?= gcc
-CFLAGS = -std=c99 -Os -Wall -Wextra -g
+CFLAGS = -std=c99 -Os -Wall -Wextra
 JAVAC = javac
 PATCH = --patch-module java.base=java
 
