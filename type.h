@@ -7,22 +7,20 @@ typedef uint16_t u2;
 typedef uint32_t u4;
 typedef uint64_t u8;
 
-typedef enum
-{
+typedef enum {
     VAR_NONE = 0,
     VAR_BYTE = 1,
     VAR_SHORT = 2,
     VAR_INT = 3,
     VAR_LONG = 4,
-    VAR_PTR = 5, /* reference */
-    VAR_ARRAY_PTR = 6, /* one dimension array */
+    VAR_PTR = 5,           /* reference */
+    VAR_ARRAY_PTR = 6,     /* one dimension array */
     VAR_MULTARRAY_PTR = 7, /* two dimension array */
-    VAR_STR_PTR = 8 /* string reference */
+    VAR_STR_PTR = 8        /* string reference */
 } variable_type_t;
 
 
-typedef union
-{
+typedef union {
     u1 char_value;
     u2 short_value;
     u4 int_value;
@@ -30,20 +28,18 @@ typedef union
     void *ptr_value;
 } value_t;
 
-typedef struct
-{
+typedef struct {
     value_t value;
-    variable_type_t type;    
+    variable_type_t type;
 } variable_t;
 
-typedef enum
-{
+typedef enum {
     T_BOOLEN = 4,
     T_CHAR = 5,
     T_FLOAT = 6,
     T_DOUBLE = 7,
     T_BYTE = 8,
-    T_SHORT = 9, 
+    T_SHORT = 9,
     T_INT = 10,
     T_LONG = 11
 } array_type_t;

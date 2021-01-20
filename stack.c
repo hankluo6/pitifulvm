@@ -56,8 +56,7 @@ stack_entry_t top(stack_frame_t *stack)
 /* pop top of stack value and convert to 64 bits integer */
 int64_t stack_to_int(stack_value_t *entry, size_t size)
 {
-    switch (size)
-    {
+    switch (size) {
     /* int8_t */
     case 1: {
         int8_t value;
@@ -101,8 +100,9 @@ void *pop_ref(stack_frame_t *stack)
     return stack->store[--stack->size].entry.ptr_value;
 }
 
-/* pop top of stack and push into local variable, note that if it is integer then it will
-   be convert to 64 bits long integer in order to type consistent */
+/* pop top of stack and push into local variable, note that if it is integer
+   then it will be convert to 64 bits long integer in order to type consistent
+ */
 void pop_to_local(stack_frame_t *stack, local_variable_t *locals)
 {
     stack_entry_type_t type = stack->store[stack->size - 1].type;
@@ -111,13 +111,11 @@ void pop_to_local(stack_frame_t *stack, local_variable_t *locals)
         int64_t value = pop_int(stack);
         locals->entry.long_value = value;
         locals->type = STACK_ENTRY_LONG;
-    }
-    else if (type == STACK_ENTRY_REF) {
+    } else if (type == STACK_ENTRY_REF) {
         void *addr = pop_ref(stack);
         locals->entry.ptr_value = addr;
         locals->type = type;
-    }
-    else {
+    } else {
         assert(0 && "not support stack type");
     }
 }
@@ -125,8 +123,7 @@ void pop_to_local(stack_frame_t *stack, local_variable_t *locals)
 size_t get_type_size(stack_entry_type_t type)
 {
     size_t size = 0;
-    switch (type)
-    {
+    switch (type) {
     case STACK_ENTRY_NONE:
         break;
     case STACK_ENTRY_BYTE:

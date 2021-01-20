@@ -1,10 +1,10 @@
 #pragma once
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 #include <stdlib.h>
-#include <assert.h>
+#include <string.h>
 
 #include "type.h"
 
@@ -14,7 +14,7 @@ typedef enum {
     STACK_ENTRY_BYTE,
     STACK_ENTRY_SHORT,
     STACK_ENTRY_INT,
-    STACK_ENTRY_LONG, 
+    STACK_ENTRY_LONG,
     STACK_ENTRY_REF,
     STACK_ENTRY_DOUBLE,
     STACK_ENTRY_FLOAT

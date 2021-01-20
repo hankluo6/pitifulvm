@@ -72,5 +72,5 @@ clean:
 .PRECIOUS: %.o tests/%.class tests/%-expected.out tests/%-actual.out tests/%-result.out
 
 indent:
-	clang-format -i jvm.c
+	clang-format -i *.c *.h 
 	cloc jvm.c

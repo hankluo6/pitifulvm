@@ -71,11 +71,10 @@ char *get_string_utf(constant_pool_t *cp, u2 idx)
 {
     const_pool_info *str = get_constant(cp, idx);
     assert(str->tag == CONSTANT_String && "Expected a String");
-    const_pool_info *utf8 = get_constant(
-        cp,
-        ((CONSTANT_String_info *) str->info)->string_index);
+    const_pool_info *utf8 =
+        get_constant(cp, ((CONSTANT_String_info *) str->info)->string_index);
     assert(utf8->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    return (char *)utf8->info;
+    return (char *) utf8->info;
 }
 
 /**
@@ -87,10 +86,13 @@ uint16_t get_number_of_parameters(method_t *method)
     uint16_t num_param = 0;
     for (size_t i = 1; method->descriptor[i] != ')'; ++i) {
         if (method->descriptor[i] == 'L') {
-            while (method->descriptor[++i] != ';');
+            while (method->descriptor[++i] != ';')
+                ;
         }
         if (method->descriptor[i] == '[') {
-            while (method->descriptor[i + 1] != ')' && method->descriptor[++i] == '[');
+            while (method->descriptor[i + 1] != ')' &&
+                   method->descriptor[++i] == '[')
+                ;
         }
         num_param++;
     }
@@ -128,34 +130,42 @@ method_t *find_method(const char *name, const char *desc, class_file_t *clazz)
     return NULL;
 }
 
-char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info)
+char *find_field_info_from_index(uint16_t idx,
+                                 class_file_t *clazz,
+                                 char **name_info,
+                                 char **descriptor_info)
 {
     CONSTANT_FieldOrMethodRef_info *field_ref =
         get_fieldref(&clazz->constant_pool, idx);
     const_pool_info *name_and_type =
         get_constant(&clazz->constant_pool, field_ref->name_and_type_index);
-    assert(name_and_type->tag == CONSTANT_NameAndType && "Expected a NameAndType");
-    const_pool_info *name =
-        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->name_index);
+    assert(name_and_type->tag == CONSTANT_NameAndType &&
+           "Expected a NameAndType");
+    const_pool_info *name = get_constant(
+        &clazz->constant_pool,
+        ((CONSTANT_NameAndType_info *) name_and_type->info)->name_index);
     assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    *name_info = (char *)name->info;
-    const_pool_info *descriptor =
-        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->descriptor_index);
+    *name_info = (char *) name->info;
+    const_pool_info *descriptor = get_constant(
+        &clazz->constant_pool,
+        ((CONSTANT_NameAndType_info *) name_and_type->info)->descriptor_index);
     assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    *descriptor_info = (char *)descriptor->info;
+    *descriptor_info = (char *) descriptor->info;
     CONSTANT_Class_info *class_info =
         get_class_name(&clazz->constant_pool, field_ref->class_index);
     const_pool_info *class_name =
         get_constant(&clazz->constant_pool, class_info->string_index);
 
-    return (char *)class_name->info;
+    return (char *) class_name->info;
 }
 
 bootstrap_methods_t *find_bootstrap_method(uint16_t idx, class_file_t *clazz)
 {
     const_pool_info *info = get_constant(&clazz->constant_pool, idx);
     assert(info->tag == CONSTANT_InvokeDynamic && "Expected a InvokeDynanmic");
-    return &clazz->bootstrap->bootstrap_methods[((CONSTANT_InvokeDynamic_info *)info->info)->bootstrap_method_attr_index];
+    return &clazz->bootstrap
+                ->bootstrap_methods[((CONSTANT_InvokeDynamic_info *) info->info)
+                                        ->bootstrap_method_attr_index];
 }
 
 
@@ -166,7 +176,9 @@ bootstrap_methods_t *find_bootstrap_method(uint16_t idx, class_file_t *clazz)
  * @param clazz the parsed class file
  * @return the method if it was found, or NULL
  */
-method_t *find_method_from_index(uint16_t idx, class_file_t *clazz, class_file_t *target_clazz)
+method_t *find_method_from_index(uint16_t idx,
+                                 class_file_t *clazz,
+                                 class_file_t *target_clazz)
 {
     CONSTANT_NameAndType_info *name_and_type =
         get_method_name_and_type(&clazz->constant_pool, idx);
@@ -176,39 +188,46 @@ method_t *find_method_from_index(uint16_t idx, class_file_t *clazz, class_file_t
     const_pool_info *descriptor =
         get_constant(&clazz->constant_pool, name_and_type->descriptor_index);
     assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    return find_method((char *) name->info, (char *) descriptor->info, target_clazz);
+    return find_method((char *) name->info, (char *) descriptor->info,
+                       target_clazz);
 }
 
-char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info)
+char *find_method_info_from_index(uint16_t idx,
+                                  class_file_t *clazz,
+                                  char **name_info,
+                                  char **descriptor_info)
 {
     CONSTANT_FieldOrMethodRef_info *method_ref =
         get_methodref(&clazz->constant_pool, idx);
     const_pool_info *name_and_type =
         get_constant(&clazz->constant_pool, method_ref->name_and_type_index);
-    assert(name_and_type->tag == CONSTANT_NameAndType && "Expected a NameAndType");
-    const_pool_info *name =
-        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->name_index);
+    assert(name_and_type->tag == CONSTANT_NameAndType &&
+           "Expected a NameAndType");
+    const_pool_info *name = get_constant(
+        &clazz->constant_pool,
+        ((CONSTANT_NameAndType_info *) name_and_type->info)->name_index);
     assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    *name_info = (char *)name->info;
-    const_pool_info *descriptor =
-        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->descriptor_index);
+    *name_info = (char *) name->info;
+    const_pool_info *descriptor = get_constant(
+        &clazz->constant_pool,
+        ((CONSTANT_NameAndType_info *) name_and_type->info)->descriptor_index);
     assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    *descriptor_info = (char *)descriptor->info;
+    *descriptor_info = (char *) descriptor->info;
     CONSTANT_Class_info *class_info =
         get_class_name(&clazz->constant_pool, method_ref->class_index);
     const_pool_info *class_name =
         get_constant(&clazz->constant_pool, class_info->string_index);
 
-    return (char *)class_name->info;
+    return (char *) class_name->info;
 }
 
 
 char *find_class_name_from_index(uint16_t idx, class_file_t *clazz)
 {
-    CONSTANT_Class_info *class =
-        get_class_name(&clazz->constant_pool, idx);
+    CONSTANT_Class_info *class = get_class_name(&clazz->constant_pool, idx);
 
-    const_pool_info *name = get_constant(&clazz->constant_pool, class->string_index);
+    const_pool_info *name =
+        get_constant(&clazz->constant_pool, class->string_index);
     assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
     return (char *) name->info;
 }
@@ -345,8 +364,7 @@ void get_class_info(FILE *class_file, class_file_t *clazz)
     clazz->super_class = read_u2(class_file);
 }
 
-void read_field_attributes(FILE *class_file,
-                            field_info *info)
+void read_field_attributes(FILE *class_file, field_info *info)
 {
     for (u2 i = 0; i < info->attributes_count; i++) {
         attribute_info ainfo = {
@@ -474,7 +492,8 @@ method_t *get_methods(FILE *class_file, constant_pool_t *cp)
     return methods;
 }
 
-bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file, constant_pool_t *cp)
+bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file,
+                                                       constant_pool_t *cp)
 {
     u2 attributes_count = read_u2(class_file);
     for (u2 i = 0; i < attributes_count; i++) {
@@ -487,20 +506,32 @@ bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file, constan
             get_constant(cp, ainfo.attribute_name_index);
         assert(type_constant->tag == CONSTANT_Utf8 && "Expected a UTF8");
         if (!strcmp((char *) type_constant->info, "BootstrapMethods")) {
-            bootstrapMethods_attribute_t *bootstrap = malloc(sizeof(*bootstrap));
+            bootstrapMethods_attribute_t *bootstrap =
+                malloc(sizeof(*bootstrap));
 
             bootstrap->num_bootstrap_methods = read_u2(class_file);
-            bootstrap->bootstrap_methods = malloc(sizeof(bootstrap_methods_t) * bootstrap->num_bootstrap_methods);
+            bootstrap->bootstrap_methods = malloc(
+                sizeof(bootstrap_methods_t) * bootstrap->num_bootstrap_methods);
 
             /* not implement free */
-            assert(bootstrap->bootstrap_methods && "Failed to allocate bootstrap method");
+            assert(bootstrap->bootstrap_methods &&
+                   "Failed to allocate bootstrap method");
             for (int j = 0; j < bootstrap->num_bootstrap_methods; ++j) {
-                bootstrap->bootstrap_methods[j].bootstrap_method_ref = read_u2(class_file);
-                bootstrap->bootstrap_methods[j].num_bootstrap_arguments = read_u2(class_file);
-                bootstrap->bootstrap_methods[j].bootstrap_arguments = malloc(sizeof(u2) * bootstrap->bootstrap_methods[j].num_bootstrap_arguments);
-                assert(bootstrap->bootstrap_methods[j].bootstrap_arguments && "Failed to allocate bootstrap argument");
-                for (int k = 0; k < bootstrap->bootstrap_methods[j].num_bootstrap_arguments; ++k) {
-                    bootstrap->bootstrap_methods[j].bootstrap_arguments[k] = read_u2(class_file);
+                bootstrap->bootstrap_methods[j].bootstrap_method_ref =
+                    read_u2(class_file);
+                bootstrap->bootstrap_methods[j].num_bootstrap_arguments =
+                    read_u2(class_file);
+                bootstrap->bootstrap_methods[j].bootstrap_arguments = malloc(
+                    sizeof(u2) *
+                    bootstrap->bootstrap_methods[j].num_bootstrap_arguments);
+                assert(bootstrap->bootstrap_methods[j].bootstrap_arguments &&
+                       "Failed to allocate bootstrap argument");
+                for (int k = 0;
+                     k <
+                     bootstrap->bootstrap_methods[j].num_bootstrap_arguments;
+                     ++k) {
+                    bootstrap->bootstrap_methods[j].bootstrap_arguments[k] =
+                        read_u2(class_file);
                 }
             }
             return bootstrap;
@@ -540,6 +571,7 @@ class_file_t get_class(FILE *class_file)
     clazz.methods = get_methods(class_file, &clazz.constant_pool);
 
     /* Read the list of attributes */
-    clazz.bootstrap = read_bootstrap_attribute(class_file, &clazz.constant_pool);
+    clazz.bootstrap =
+        read_bootstrap_attribute(class_file, &clazz.constant_pool);
     return clazz;
 }
