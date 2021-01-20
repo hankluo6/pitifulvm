@@ -1,10 +1,10 @@
 #pragma once
 
-#include <stdio.h>
 #include <assert.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "type.h"
 
@@ -62,8 +62,7 @@ typedef struct {
     u2 access_flag;
 } method_t;
 
-typedef struct
-{
+typedef struct {
     char *class_name;
     char *name;
     char *descriptor;
@@ -160,16 +159,15 @@ typedef struct {
     u2 this_class;
     u2 super_class;
     u2 interfaces_count;
-    u2* interfaces;
+    u2 *interfaces;
     u2 fields_count;
     field_t *fields;
     u2 attributes_count;
-    attribute_info* attributes;
+    attribute_info *attributes;
     bootstrapMethods_attribute_t *bootstrap;
 } class_file_t;
 
-typedef struct
-{
+typedef struct {
     class_file_t *clazz;
     /* char *path; */
     char *name;
@@ -272,23 +270,31 @@ u1 read_u1(FILE *class_file);
 u2 read_u2(FILE *class_file);
 u4 read_u4(FILE *class_file);
 const_pool_info *get_constant(constant_pool_t *constant_pool, u2 index);
-CONSTANT_NameAndType_info *get_method_name_and_type(constant_pool_t *cp, u2 idx);
+CONSTANT_NameAndType_info *get_method_name_and_type(constant_pool_t *cp,
+                                                    u2 idx);
 CONSTANT_FieldOrMethodRef_info *get_methodref(constant_pool_t *cp, u2 idx);
 CONSTANT_FieldOrMethodRef_info *get_fieldref(constant_pool_t *cp, u2 idx);
 CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx);
 uint16_t get_number_of_parameters(method_t *method);
 field_t *find_field(const char *name, const char *desc, class_file_t *clazz);
 method_t *find_method(const char *name, const char *desc, class_file_t *clazz);
-method_t *find_method_from_index(uint16_t idx, class_file_t *clazz, class_file_t *target_clazz);
+method_t *find_method_from_index(uint16_t idx,
+                                 class_file_t *clazz,
+                                 class_file_t *target_clazz);
 CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx);
 char *get_string_utf(constant_pool_t *cp, u2 idx);
-char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
-char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
+char *find_field_info_from_index(uint16_t idx,
+                                 class_file_t *clazz,
+                                 char **name_info,
+                                 char **descriptor_info);
+char *find_method_info_from_index(uint16_t idx,
+                                  class_file_t *clazz,
+                                  char **name_info,
+                                  char **descriptor_info);
 char *find_class_name_from_index(uint16_t idx, class_file_t *clazz);
 class_header_t get_class_header(FILE *class_file);
 void get_class_info(FILE *class_file, class_file_t *clazz);
-void read_field_attributes(FILE *class_file,
-                            field_info *info);
+void read_field_attributes(FILE *class_file, field_info *info);
 void read_method_attributes(FILE *class_file,
                             method_info *info,
                             code_t *code,
@@ -296,7 +302,8 @@ void read_method_attributes(FILE *class_file,
 u2 *get_interface(FILE *class_file, class_file_t *clazz);
 method_t *get_methods(FILE *class_file, constant_pool_t *cp);
 field_t *get_fields(FILE *class_file, constant_pool_t *cp, class_file_t *clazz);
-bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file, constant_pool_t *cp);
+bootstrapMethods_attribute_t *read_bootstrap_attribute(FILE *class_file,
+                                                       constant_pool_t *cp);
 bootstrap_methods_t *find_bootstrap_method(uint16_t idx, class_file_t *clazz);
 class_file_t get_class(FILE *class_file);
 void free_class(class_file_t *clazz);

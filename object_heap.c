@@ -3,12 +3,12 @@
 void init_object_heap()
 {
     /* max contain 5000 object */
-    object_heap.objects = malloc(sizeof(object_t*) * 5000);
+    object_heap.objects = malloc(sizeof(object_t *) * 5000);
     object_heap.length = 0;
 }
 
 /* create java object */
-object_t* create_object(class_file_t *clazz)
+object_t *create_object(class_file_t *clazz)
 {
     size_t size = clazz->fields_count * sizeof(variable_t);
     object_t *new_obj = malloc(sizeof(object_t));
@@ -16,8 +16,7 @@ object_t* create_object(class_file_t *clazz)
     /* prevent undefined behavior */
     if (size == 0) {
         new_obj->ptr = NULL;
-    }
-    else {
+    } else {
         new_obj->ptr = malloc(size);
         memset(&new_obj->ptr->value, 0, size);
         for (int i = 0; i < clazz->fields_count; ++i) {
@@ -46,7 +45,7 @@ void *create_array(class_file_t *clazz, int count)
 }
 
 /**
- * create two dimension array, place it address in object heap 
+ * create two dimension array, place it address in object heap
  * note that:
  *      field 0 store array address,
  *      field 1 store first dimension size
@@ -72,11 +71,11 @@ void **create_two_dimension_array(class_file_t *clazz, int count1, int count2)
     object_heap.objects[object_heap.length++] = arr_obj;
     arr_obj->field_count = 3;
 
-    return (void **)arr;
+    return (void **) arr;
 }
 
 /**
- *  create string object and put it in object heap 
+ *  create string object and put it in object heap
  *  clazz must be java/lang/String
  */
 char *create_string(class_file_t *clazz, char *src)
@@ -117,7 +116,7 @@ size_t get_field_size(class_file_t *clazz)
             size += sizeof(bool);
         } else if (strcmp(field->descriptor, "V") == 0) {
             /* TODO */
-            size += 0; 
+            size += 0;
         } else if (strcmp(field->descriptor, "L") == 0) {
             /* pointer type */
             size += sizeof(size_t);
@@ -147,11 +146,9 @@ void free_object_heap()
         if (object_heap.objects[i]->ptr) {
             if (object_heap.objects[i]->ptr->type == VAR_STR_PTR) {
                 free(object_heap.objects[i]->ptr->value.ptr_value);
-            }
-            else if (object_heap.objects[i]->ptr->type == VAR_ARRAY_PTR) {
+            } else if (object_heap.objects[i]->ptr->type == VAR_ARRAY_PTR) {
                 free(object_heap.objects[i]->ptr->value.ptr_value);
-            }
-            else if (object_heap.objects[i]->ptr->type == VAR_MULTARRAY_PTR) {
+            } else if (object_heap.objects[i]->ptr->type == VAR_MULTARRAY_PTR) {
                 int count = object_heap.objects[i]->ptr[1].value.int_value;
                 int **addr = object_heap.objects[i]->ptr[0].value.ptr_value;
                 for (int j = 0; j < count; ++j) {

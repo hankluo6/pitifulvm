@@ -3,11 +3,12 @@
 void init_class_heap()
 {
     /* max contain 100 class file */
-    class_heap.class_info = malloc(sizeof(meta_class_t*) * 100);
+    class_heap.class_info = malloc(sizeof(meta_class_t *) * 100);
     class_heap.length = 0;
 }
 
-/* the name parameter should contain ".class" suffix and be cut in this function */
+/* the name parameter should contain ".class" suffix and be cut in this function
+ */
 void add_class(class_file_t *clazz, char *name)
 {
     meta_class_t *meta_class = malloc(sizeof(meta_class_t));
@@ -45,20 +46,18 @@ void load_native_class(char *name)
         snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
         char *pch;
         if ((pch = strstr(path, ".class")) != NULL) {
-
             FILE *class_file = fopen(path, "r");
             assert(class_file && "Failed to open file");
 
             /* parse the class file */
             class_file_t *clazz = malloc(sizeof(class_file_t));
             *clazz = get_class(class_file);
-            
+
             int error = fclose(class_file);
             assert(!error && "Failed to close file");
 
             add_class(clazz, path);
-        }
-        else {
+        } else {
             load_native_class(path);
         }
     }
@@ -68,28 +67,37 @@ void load_native_class(char *name)
 void free_class_heap()
 {
     for (int i = 0; i < class_heap.length; ++i) {
-        const_pool_info *constant = class_heap.class_info[i]->clazz->constant_pool.constant_pool;
-        for (u2 j = 0; j < class_heap.class_info[i]->clazz->constant_pool.constant_pool_count; j++, constant++) {
+        const_pool_info *constant =
+            class_heap.class_info[i]->clazz->constant_pool.constant_pool;
+        for (u2 j = 0;
+             j <
+             class_heap.class_info[i]->clazz->constant_pool.constant_pool_count;
+             j++, constant++) {
             free(constant->info);
         }
         free(class_heap.class_info[i]->clazz->constant_pool.constant_pool);
 
         field_t *field = class_heap.class_info[i]->clazz->fields;
-        for (u2 j = 0; j < class_heap.class_info[i]->clazz->fields_count; j++, field++)
+        for (u2 j = 0; j < class_heap.class_info[i]->clazz->fields_count;
+             j++, field++)
             free(field->value);
         free(class_heap.class_info[i]->clazz->fields);
 
-        for (method_t *method = class_heap.class_info[i]->clazz->methods; method->name; method++)
+        for (method_t *method = class_heap.class_info[i]->clazz->methods;
+             method->name; method++)
             free(method->code.code);
         free(class_heap.class_info[i]->clazz->methods);
 
         free(class_heap.class_info[i]->clazz->interfaces);
 
-        bootstrapMethods_attribute_t *bootstrap = class_heap.class_info[i]->clazz->bootstrap;
+        bootstrapMethods_attribute_t *bootstrap =
+            class_heap.class_info[i]->clazz->bootstrap;
         if (bootstrap) {
             for (u2 j = 0; j < bootstrap->num_bootstrap_methods; j++) {
-                bootstrap_methods_t bootstrap_method = bootstrap->bootstrap_methods[j];
-                for (u2 k = 0; k < bootstrap_method.num_bootstrap_arguments; ++k) {
+                bootstrap_methods_t bootstrap_method =
+                    bootstrap->bootstrap_methods[j];
+                for (u2 k = 0; k < bootstrap_method.num_bootstrap_arguments;
+                     ++k) {
                     free(bootstrap_method.bootstrap_arguments);
                 }
             }

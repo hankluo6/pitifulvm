@@ -1,8 +1,8 @@
 #pragma once
 
-#include "java_file.h"
-#include <dirent.h> 
+#include <dirent.h>
 #include <unistd.h>
+#include "java_file.h"
 
 
 typedef struct {

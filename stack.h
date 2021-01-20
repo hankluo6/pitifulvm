@@ -8,15 +8,13 @@
 
 #include "type.h"
 
-#include "type.h"
-
 /* stack frame type*/
 typedef enum {
     STACK_ENTRY_NONE,
     STACK_ENTRY_BYTE,
     STACK_ENTRY_SHORT,
     STACK_ENTRY_INT,
-    STACK_ENTRY_LONG, 
+    STACK_ENTRY_LONG,
     STACK_ENTRY_REF,
     STACK_ENTRY_DOUBLE,
     STACK_ENTRY_FLOAT
