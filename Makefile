@@ -2,7 +2,7 @@ CC ?= gcc
 CFLAGS = -std=c99 -Os -Wall -Wextra
 
 BIN = jvm
-OBJ = jvm.o stack.o
+OBJ = jvm.o stack.o jvm_info.o
 
 include mk/common.mk
 include mk/jdk.mk
