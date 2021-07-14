@@ -164,9 +164,10 @@ u2 read_u2(FILE *class_file);
 u4 read_u4(FILE *class_file);
 const_pool_info *get_constant(constant_pool_t *constant_pool, u2 index);
 CONSTANT_NameAndType_info *get_method_name_and_type(constant_pool_t *cp, u2 idx);
+CONSTANT_FieldOrMethodRef_info *get_methodref(constant_pool_t *cp, u2 idx);
+CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx);
 uint16_t get_number_of_parameters(method_t *method);
 method_t *find_method(const char *name, const char *desc, class_file_t *clazz);
-method_t *find_method_from_index(uint16_t idx, class_file_t *clazz);
 class_header_t get_class_header(FILE *class_file);
 class_info_t get_class_info(FILE *class_file);
 void read_method_attributes(FILE *class_file,
@@ -174,5 +175,6 @@ void read_method_attributes(FILE *class_file,
                             code_t *code,
                             constant_pool_t *cp);
 method_t *get_methods(FILE *class_file, constant_pool_t *cp);
+char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
 class_file_t get_class(FILE *class_file);
 void free_class(class_file_t *clazz);

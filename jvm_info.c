@@ -46,6 +46,20 @@ CONSTANT_NameAndType_info *get_method_name_and_type(constant_pool_t *cp, u2 idx)
     return (CONSTANT_NameAndType_info *) name_and_type_constant->info;
 }
 
+CONSTANT_FieldOrMethodRef_info *get_methodref(constant_pool_t *cp, u2 idx)
+{
+    const_pool_info *method = get_constant(cp, idx);
+    assert(method->tag == CONSTANT_MethodRef && "Expected a MethodRef");
+    return (CONSTANT_FieldOrMethodRef_info *) method->info;
+}
+
+CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx)
+{
+    const_pool_info *class = get_constant(cp, idx);
+    assert(class->tag == CONSTANT_Class && "Expected a Class");
+    return (CONSTANT_Class_info *) class->info;
+}
+
 /**
  * Get the number of integer parameters that a method takes.
  * Use the descriptor string of the method to determine its signature.
@@ -76,24 +90,27 @@ method_t *find_method(const char *name, const char *desc, class_file_t *clazz)
     return NULL;
 }
 
-/**
- * Find the method corresponding to the given constant pool index.
- *
- * @param index the constant pool index of the Methodref to call
- * @param clazz the parsed class file
- * @return the method if it was found, or NULL
- */
-method_t *find_method_from_index(uint16_t idx, class_file_t *clazz)
+char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info)
 {
-    CONSTANT_NameAndType_info *name_and_type =
-        get_method_name_and_type(&clazz->constant_pool, idx);
+    CONSTANT_FieldOrMethodRef_info *method_ref =
+        get_methodref(&clazz->constant_pool, idx);
+    const_pool_info *name_and_type =
+        get_constant(&clazz->constant_pool, method_ref->name_and_type_index);
+    assert(name_and_type->tag == CONSTANT_NameAndType && "Expected a NameAndType");
     const_pool_info *name =
-        get_constant(&clazz->constant_pool, name_and_type->name_index);
+        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->name_index);
     assert(name->tag == CONSTANT_Utf8 && "Expected a UTF8");
+    *name_info = (char *)name->info;
     const_pool_info *descriptor =
-        get_constant(&clazz->constant_pool, name_and_type->descriptor_index);
+        get_constant(&clazz->constant_pool, ((CONSTANT_NameAndType_info *) name_and_type->info)->descriptor_index);
     assert(descriptor->tag == CONSTANT_Utf8 && "Expected a UTF8");
-    return find_method((char *) name->info, (char *) descriptor->info, clazz);
+    *descriptor_info = (char *)descriptor->info;
+    CONSTANT_Class_info *class_info =
+        get_class_name(&clazz->constant_pool, method_ref->class_index);
+    const_pool_info *class_name =
+        get_constant(&clazz->constant_pool, class_info->string_index);
+
+    return (char *)class_name->info;
 }
 
 class_header_t get_class_header(FILE *class_file)

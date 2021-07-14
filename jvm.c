@@ -147,7 +147,29 @@ int32_t *execute(method_t *method,
             uint16_t index = ((param1 << 8) | param2);
 
             /* the method to be called */
-            method_t *own_method = find_method_from_index(index, clazz);
+            char *method_name, *method_descriptor, *class_name;
+            class_name = find_method_info_from_index(index, clazz, &method_name, &method_descriptor);
+            class_file_t *target_class = find_class_from_heap(class_name);
+
+            if (target_class == NULL) {
+                /* 7 = origin name length + ".class" + 1 */
+                char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                /* attempt to read given class file */
+                FILE *class_file = fopen(strcat(tmp, ".class"), "r");
+                assert(class_file && "Failed to open file");
+
+                /* parse the class file */
+                target_class = malloc(sizeof(class_file_t));
+                *target_class = get_class(class_file);
+                int error = fclose(class_file);
+                assert(!error && "Failed to close file");
+                add_class(target_class, NULL, tmp);
+                free(tmp);
+            }
+
+            method_t *own_method = find_method(method_name, method_descriptor, target_class);
             uint16_t num_params = get_number_of_parameters(own_method);
             local_variable_t own_locals[own_method->code.max_locals];
             for (int i = num_params - 1; i >= 0; i--) {
