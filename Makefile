@@ -34,7 +34,8 @@ TESTS = \
 	PalindromeProduct \
 	Primes \
 	Recursion \
-	Constructor
+	Constructor \
+	InvokeVirtual
 
 check: $(addprefix tests/,$(TESTS:=-result.out))
 

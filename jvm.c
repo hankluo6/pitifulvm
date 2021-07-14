@@ -82,14 +82,6 @@ static inline void ineg(stack_frame_t *op_stack)
     push_int(op_stack, -op1);
 }
 
-static inline void invokevirtual(stack_frame_t *op_stack)
-{
-    int32_t op = pop_int(op_stack);
-
-    /* FIXME: the implement is not correct. */
-    printf("%d\n", op);
-}
-
 static inline void iconst(stack_frame_t *op_stack, uint8_t current)
 {
     push_int(op_stack, current - i_iconst_0);
@@ -445,7 +437,67 @@ int32_t *execute(method_t *method,
 
         /* Invoke instance method; dispatch based on class */
         case i_invokevirtual: {
-            invokevirtual(op_stack);
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+
+            /* the method to be called */
+            char *method_name, *method_descriptor, *class_name;
+            class_name = find_method_info_from_index(index, clazz, &method_name, &method_descriptor);
+            class_file_t *target_class = find_class_from_heap(class_name);
+
+            if (target_class == NULL) {
+                /* not support super class method */
+                if (strcmp(class_name, "java/lang/Object") == 0) {
+                    /* pop_ref(op_stack); */
+                    pc += 3;
+                    break;
+                }
+                /* to handle print method */
+                if (strcmp(class_name, "java/io/PrintStream") == 0) {
+                    /* don't pop object reference because we don't implement get_static yet */
+                    /* pop_ref(op_stack); */
+                    /* FIXME: the implement is not correct. */
+                    int32_t op = pop_int(op_stack);
+
+                    printf("%d\n", op);
+                    pc += 3;
+                    break;
+                }
+
+                char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                /* attempt to read given class file */
+                FILE *class_file = fopen(strcat(tmp, ".class"), "r");
+                assert(class_file && "Failed to open file");
+
+                /* parse the class file */
+                target_class = malloc(sizeof(class_file_t));
+                *target_class = get_class(class_file);
+
+                int error = fclose(class_file);
+                assert(!error && "Failed to close file");
+                add_class(target_class, NULL, tmp);
+                free(tmp);
+            }
+
+            method_t *method = find_method(method_name, method_descriptor, target_class);
+            uint16_t num_params = get_number_of_parameters(method);
+            local_variable_t own_locals[method->code.max_locals];
+            for (int i = num_params; i >= 1; i--) {
+                pop_to_local(op_stack, &own_locals[i]);
+            }
+            object_t *obj = pop_ref(op_stack);
+            /* first argument is this pointer */
+            own_locals[0].entry.ptr_value = obj;
+            own_locals[0].type = STACK_ENTRY_REF;
+
+            /* FIXME: virtual method is related to object and its field */
+            int32_t *exec_res = execute(method, own_locals, obj->type);
+            if (exec_res) {
+                push_int(op_stack, *exec_res);
+            }
+            free(exec_res);
             pc += 3;
         } break;
 
