@@ -46,6 +46,13 @@ typedef struct {
     code_t code;
 } method_t;
 
+typedef struct
+{
+    char *class_name;
+    char *name;
+    char *descriptor;
+} field_t;
+
 typedef enum {
     CONSTANT_Utf8 = 1,
     CONSTANT_Integer = 3,
@@ -86,6 +93,15 @@ typedef struct {
 typedef struct {
     constant_pool_t constant_pool;
     method_t *methods;
+    u2 access_flags;
+    u2 this_class;
+    u2 super_class;
+    u2 interfaces_count;
+    u2* interfaces;
+    u2 fields_count;
+    field_t *fields;
+    u2 attributes_count;
+    attribute_info** attributes;
 } class_file_t;
 
 typedef struct

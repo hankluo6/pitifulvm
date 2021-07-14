@@ -466,6 +466,7 @@ int main(int argc, char *argv[])
     assert(!error && "Failed to close file");
 
     init_class_heap();
+    init_object_heap();
 
     char *match = strrchr(argv[1], '/');
     if (match == NULL) {
@@ -492,6 +493,7 @@ int main(int argc, char *argv[])
     assert(!result && "main() should return void");
 
     free(prefix);
+    free_object_heap();
     free_class_heap();
 
     return 0;
