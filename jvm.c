@@ -461,9 +461,160 @@ int32_t *execute(method_t *method,
             pc += 1;
         } break;
 
+        case i_aload: {
+            int32_t param = code_buf[pc + 1];
+            object_t *obj = locals[param].entry.ptr_value;
+            push_ref(op_stack, obj);
+            pc += 2;
+        } break;
+
+        case i_aload_0:
+        case i_aload_1:
+        case i_aload_2:
+        case i_aload_3: {
+            int32_t param = current - i_aload_0;
+            object_t *obj = locals[param].entry.ptr_value;
+            push_ref(op_stack, obj);
+            pc += 1;
+        } break;
+
+        case i_astore: {
+            int32_t param = code_buf[pc + 1];
+            locals[param].entry.ptr_value = pop_ref(op_stack);
+            pc += 2;
+        } break;
+
+        case i_astore_0:
+        case i_astore_1:
+        case i_astore_2:
+        case i_astore_3: {
+            int32_t param = current - i_astore_0;
+            locals[param].entry.ptr_value = pop_ref(op_stack);
+            pc += 1;
+        } break;
+
         /* Push short */
         case i_sipush: {
             sipush(op_stack, pc, code_buf);
+            pc += 3;
+        } break;
+
+        case i_getfield: {
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+
+            object_t *obj = pop_ref(op_stack);
+            char *field_name, *field_descriptor, *class_name;
+            class_name = find_field_info_from_index(index, obj->type, &field_name, &field_descriptor);
+            variable_t *addr = find_field_addr(obj, field_name);
+            push_int(op_stack, addr->int_value);
+            pc += 3;
+        } break;
+
+        case i_putfield: {
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+
+            /* TODO: support other type (e.g reference) */
+            int32_t value = pop_int(op_stack);
+            object_t *obj = pop_ref(op_stack);
+
+            char *field_name, *field_descriptor, *class_name;
+            class_name = find_field_info_from_index(index, obj->type, &field_name, &field_descriptor);
+            assert(strcmp(field_descriptor, "I") == 0 && "Only support integer field");
+            variable_t *addr = find_field_addr(obj, field_name);
+            addr->int_value = value;
+            pc += 3;
+        } break;
+
+        /* New object */
+        case i_new: {
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+
+            char *class_name = find_class_name_from_index(index, clazz);
+            class_file_t *new_class = find_class_from_heap(class_name);
+
+            if (new_class == NULL) {
+                char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                /* attempt to read given class file */
+                FILE *class_file = fopen(strcat(tmp, ".class"), "r");
+                assert(class_file && "Failed to open file");
+
+                /* parse the class file */
+                new_class = malloc(sizeof(class_file_t));
+                *new_class = get_class(class_file);
+
+                int error = fclose(class_file);
+                assert(!error && "Failed to close file");
+                add_class(new_class, NULL, tmp);
+                free(tmp);
+            }
+
+            object_t *object = create_object(new_class);
+            push_ref(op_stack, object);
+
+            pc += 3;
+        } break;
+
+        case i_dup: {
+            op_stack->store[op_stack->size] = op_stack->store[op_stack->size - 1];
+            op_stack->size++;
+            pc += 1;
+        } break;
+
+        case i_invokespecial: {
+            uint8_t param1 = code_buf[pc + 1], param2 = code_buf[pc + 2];
+            uint16_t index = ((param1 << 8) | param2);
+
+            /* the method to be called */
+            char *method_name, *method_descriptor, *class_name;
+            class_name = find_method_info_from_index(index, clazz, &method_name, &method_descriptor);
+            class_file_t *target_class = find_class_from_heap(class_name);
+
+            if (target_class == NULL) {
+                /* this should be run when invokespecial with java/lang/Object."<init>" */
+                if (strcmp(class_name, "java/lang/Object") == 0) {
+                    pop_ref(op_stack);
+                    pc += 3;
+                    break;
+                }
+                char *tmp = malloc((strlen(class_name) + 7 + strlen(prefix)) * sizeof(char));
+                strcpy(tmp, prefix);
+                strcat(tmp, class_name);
+                /* attempt to read given class file */
+                FILE *class_file = fopen(strcat(tmp, ".class"), "r");
+                assert(class_file && "Failed to open file");
+
+                /* parse the class file */
+                target_class = malloc(sizeof(class_file_t));
+                *target_class = get_class(class_file);
+
+                int error = fclose(class_file);
+                assert(!error && "Failed to close file");
+                add_class(target_class, NULL, tmp);
+                free(tmp);
+            }
+
+            /* constructor */
+            method_t *constructor = find_method(method_name, method_descriptor, target_class);
+            uint16_t num_params = get_number_of_parameters(constructor);
+            local_variable_t own_locals[constructor->code.max_locals];
+            for (int i = num_params; i >= 1; i--) {
+                pop_to_local(op_stack, &own_locals[i]);
+            }
+            object_t *obj = pop_ref(op_stack);
+
+            /* first argument is this pointer */
+            own_locals[0].entry.ptr_value = obj;
+            own_locals[0].type = STACK_ENTRY_REF;
+
+            int32_t *exec_res = execute(constructor, own_locals, obj->type);
+            assert(exec_res == NULL && "constructor must be no return");
+            free(exec_res);
+
             pc += 3;
         } break;
         }

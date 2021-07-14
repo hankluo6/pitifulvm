@@ -28,6 +28,8 @@ typedef struct {
     u2 attributes_count;
 } method_info;
 
+typedef method_info field_info;
+
 typedef struct {
     u2 attribute_name_index;
     u4 attribute_length;
@@ -123,15 +125,26 @@ typedef enum {
     i_sipush = 0x11,
     i_ldc = 0x12,
     i_iload = 0x15,
+    i_aload = 0x19,
     i_iload_0 = 0x1a,
     i_iload_1 = 0x1b,
     i_iload_2 = 0x1c,
     i_iload_3 = 0x1d,
+    i_aload_0 = 0x2a,
+    i_aload_1 = 0x2b,
+    i_aload_2 = 0x2c,
+    i_aload_3 = 0x2d,
     i_istore = 0x36,
+    i_astore = 0x3a,
     i_istore_0 = 0x3b,
     i_istore_1 = 0x3c,
     i_istore_2 = 0x3d,
     i_istore_3 = 0x3e,
+    i_astore_0 = 0x4b,
+    i_astore_1 = 0x4c,
+    i_astore_2 = 0x4d,
+    i_astore_3 = 0x4e,
+    i_dup = 0x59,
     i_iadd = 0x60,
     i_isub = 0x64,
     i_imul = 0x68,
@@ -155,8 +168,12 @@ typedef enum {
     i_ireturn = 0xac,
     i_return = 0xb1,
     i_getstatic = 0xb2,
+    i_getfield = 0xb4,
+    i_putfield = 0xb5,
     i_invokevirtual = 0xb6,
+    i_invokespecial = 0xb7,
     i_invokestatic = 0xb8,
+    i_new = 0xbb
 } jvm_opcode_t;
 
 u1 read_u1(FILE *class_file);
@@ -165,6 +182,7 @@ u4 read_u4(FILE *class_file);
 const_pool_info *get_constant(constant_pool_t *constant_pool, u2 index);
 CONSTANT_NameAndType_info *get_method_name_and_type(constant_pool_t *cp, u2 idx);
 CONSTANT_FieldOrMethodRef_info *get_methodref(constant_pool_t *cp, u2 idx);
+CONSTANT_FieldOrMethodRef_info *get_fieldref(constant_pool_t *cp, u2 idx);
 CONSTANT_Class_info *get_class_name(constant_pool_t *cp, u2 idx);
 uint16_t get_number_of_parameters(method_t *method);
 method_t *find_method(const char *name, const char *desc, class_file_t *clazz);
@@ -175,6 +193,8 @@ void read_method_attributes(FILE *class_file,
                             code_t *code,
                             constant_pool_t *cp);
 method_t *get_methods(FILE *class_file, constant_pool_t *cp);
+char *find_field_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
 char *find_method_info_from_index(uint16_t idx, class_file_t *clazz, char **name_info, char **descriptor_info);
+char *find_class_name_from_index(uint16_t idx, class_file_t *clazz);
 class_file_t get_class(FILE *class_file);
 void free_class(class_file_t *clazz);
