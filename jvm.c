@@ -125,11 +125,15 @@ int32_t *execute(method_t *method,
         case i_ireturn: {
             int32_t *ret = malloc(sizeof(int32_t));
             *ret = pop_int(op_stack);
+            free(op_stack->store);
+            free(op_stack);
             return ret;
         } break;
 
         /* Return void from method */
         case i_return:
+            free(op_stack->store);
+            free(op_stack);
             return NULL;
 
         /* Invoke a class (static) method */
