@@ -9,7 +9,12 @@
 
 #include "jvm_info.h"
 #include "stack.h"
+#include "class_heap.h"
+#include "object_heap.h"
 #include "type.h"
+
+/* TODO: add -cp arg to achieve class path select */
+char *prefix;
 
 static inline void bipush(stack_frame_t *op_stack,
                           uint32_t pc,
@@ -453,24 +458,41 @@ int main(int argc, char *argv[])
     FILE *class_file = fopen(argv[1], "r");
     assert(class_file && "Failed to open file");
 
-    /* parse the class file */
-    class_file_t clazz = get_class(class_file);
+    /* parse the class file */    
+    class_file_t *clazz = malloc(sizeof(class_file_t));
+    *clazz = get_class(class_file);
+
     int error = fclose(class_file);
     assert(!error && "Failed to close file");
 
+    init_class_heap();
+
+    char *match = strrchr(argv[1], '/');
+    if (match == NULL) {
+        add_class(clazz, NULL, argv[1]);
+        prefix = malloc(1 * sizeof(char));
+        prefix[0] = '\0';
+    } else {
+        add_class(clazz, NULL, match + 1);
+        prefix = malloc((match - argv[1] + 2) * sizeof(char));
+        strncpy(prefix, argv[1], match - argv[1] + 1);
+        prefix[match - argv[1] + 1] = '\0';
+    }
+
     /* execute the main method if found */
     method_t *main_method =
-        find_method("main", "([Ljava/lang/String;)V", &clazz);
+        find_method("main", "([Ljava/lang/String;)V", clazz);
     assert(main_method && "Missing main() method");
 
     /* FIXME: locals[0] contains a reference to String[] args, but right now
      * we lack of the support for java.lang.Object. Leave it uninitialized.
      */
     local_variable_t locals[main_method->code.max_locals];
-    int32_t *result = execute(main_method, locals, &clazz);
+    int32_t *result = execute(main_method, locals, clazz);
     assert(!result && "main() should return void");
 
-    free_class(&clazz);
+    free(prefix);
+    free_class_heap();
 
     return 0;
 }

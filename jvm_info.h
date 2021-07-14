@@ -88,6 +88,13 @@ typedef struct {
     method_t *methods;
 } class_file_t;
 
+typedef struct
+{
+    class_file_t *clazz;
+    char *path;
+    char *name;
+} meta_class_t;
+
 typedef enum {
     i_iconst_m1 = 0x2,
     i_iconst_0 = 0x3,
